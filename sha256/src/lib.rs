@@ -45,7 +45,7 @@ fn get_hash_values() -> [u32; 8] {
     h
 }
 
-fn get_be_words_from_512bits(slice: &BitSlice) -> [u32; 64] {
+fn get_big_endian_words_from_512bits(slice: &BitSlice) -> [u32; 64] {
     let mut w: [u32; 64] = [0; 64];
     let mut j = 0;
     for i in (32..=slice.len()).step_by(32) {
@@ -59,6 +59,10 @@ fn get_be_words_from_512bits(slice: &BitSlice) -> [u32; 64] {
     w
 }
 
+fn right_rotate(x: u32, n: u32) -> u32 {
+    (x >> n) | (x << (32 - n))
+}
+ 
 pub fn hash(data: String) -> String {
     let mut bit_vec: BitVec = bitvec![];
 
@@ -93,7 +97,15 @@ pub fn hash(data: String) -> String {
 
     // chunk loop
     for i in (512..=closest_512_multiple).step_by(512) {
-        let w: [u32; 64] = get_be_words_from_512bits(&bit_vec[(i - 512)..i]);
+        let mut w: [u32; 64] = get_big_endian_words_from_512bits(&bit_vec[(i - 512)..i]);
+        
+        // extended first 16 words into next zero-ed indexes
+        for j in 16..64 {
+            let s0: u32 = right_rotate(w[j-15], 7) ^ right_rotate(w[j-15], 18) ^ (w[j-15] >> 3);
+            let s1: u32 = right_rotate(w[j-2], 17) ^ right_rotate(w[j-2], 19) ^ (w[j-2] >> 10);
+
+            w[j] = w[j-16] + s0 + w[j-7] + s1;
+        }
         
 
     }
