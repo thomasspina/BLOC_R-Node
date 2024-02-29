@@ -1,7 +1,7 @@
-extern crate sha256;
+extern crate sha2;
 
-use crate::sha256::hash;
+use sha2::sha256::hash;
 
 fn main() {
-    println!("\n{}", hash(String::from("hello world")));
+    print!("{}", hash(String::from("hello world")));
 }
