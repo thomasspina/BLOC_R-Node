@@ -1,12 +1,10 @@
-workspace = { members = [ "ecdsa", "rblock", "sha2"] }
 [package]
-name = "rust_blockchain"
+name = "ecdsa"
 version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-sha2 = { path = "./sha2" }
-ecdsa = { path = "./ecdsa" }
 num-bigint = "0.4"
+num-traits = "0.2.18"

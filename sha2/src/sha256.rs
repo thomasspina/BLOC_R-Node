@@ -5,7 +5,7 @@ pub fn hash(data: String) -> String {
     let closest_512_multiple: usize = ((bit_vec.len() + 512 - 1) / 512) * 512;
 
     let k: [u32; 64] = get_round_constants();
-    let mut hash_values: [u32; 8] = get_hash_values();
+    let mut hash_values: [u32; 8] = get_initial_hash_values();
 
     // 512bits chunk loop
     for i in (512..=closest_512_multiple).step_by(512) {
@@ -65,7 +65,7 @@ pub fn hash(data: String) -> String {
     return hash_values.iter().map(|&val| format!("{:08x}", val)).collect();
 }
 
-pub fn get_hash_values() -> [u32; 8] {
+pub fn get_initial_hash_values() -> [u32; 8] {
     let mut h: [u32; 8] = [0; 8];
 
     for (i, p) in get_first_primes(8).iter().enumerate() {
@@ -117,7 +117,7 @@ fn get_big_endian_words_from_512bits(slice: &BitSlice) -> [u32; 64] {
     let mut w: [u32; 64] = [0; 64];
     let mut j = 0;
     for i in (32..=slice.len()).step_by(32) {
-        // load_le and load_be not working here, had to do it by hand
+        // load_le and load_be methods not working here, had to do it by hand
         for (k, bit) in slice[(i-32)..i].iter().enumerate() {
             w[j] |= if *bit { 1 << 31 - k } else { 0 };
         }

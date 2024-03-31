@@ -1,10 +1,10 @@
 struct Block {
-    index: u64,
+    height: u64,
+    hash: u64,
+    version: String,
     timestamp: u128,
-    transactions: Vec<Transaction>,
+    nonce: u32,
     prev_hash: String,
-    proof: u64
+    merkle_root: String,
+    transactions: Vec<Transaction>
 }
-
-
-
