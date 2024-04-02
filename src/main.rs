@@ -22,5 +22,5 @@ fn main() {
 
     let public_key = secp256k1.g.multiply(bigint(&private_key.clone()));
 
-    println!("\nPublic key:\n\nx: {}\n", &public_key.x);
+    println!("\nPublic key:\n\n{}\n", public_key.compressed_point());
 }

@@ -18,6 +18,28 @@ pub struct Point {
 
 impl Point {
     /*
+        returns the x coordinate as the compressed point (essentially the public key)
+    */
+    pub fn compressed_point(&self) -> String {
+        let mut prefix: String;
+
+        if &self.y % 2 != zero() {
+            prefix = String::from("03");
+        } else {
+            prefix = String::from("02");
+        }
+
+        let hex_point: String = format!("{:x}", self.x);
+
+        if hex_point.len() < 64 {
+            prefix.push_str("0");
+        }
+        prefix.push_str(&hex_point);
+
+        prefix
+    }
+
+    /*
         returns the point multiplied by n. Uses fast binary exponentiation
     */
     pub fn multiply(mut self, mut n: BigInt) -> Point {
