@@ -15,34 +15,34 @@ pub fn modulo(x: &BigInt, m: &BigInt) -> BigInt {
     Ex: (5 * x) mod 7 = 1 what is x. x here is 3
 */
 pub fn modular_multiplicative_inverse(
-    mut n: BigInt,
+    n: &BigInt,
     mut b: BigInt,
     t1: Option<BigInt>,
     t2: Option<BigInt>,
-    s1: Option<BigInt>,
-    s2: Option<BigInt>
 ) -> BigInt {
-    let mut t1: BigInt = t1.unwrap_or(one());
-    let mut t2: BigInt = t2.unwrap_or(zero());
-    let mut s1: BigInt = s1.unwrap_or(zero());
-    let mut s2: BigInt = s2.unwrap_or(one());
+    let t1 = t1.unwrap_or(zero()); // set default value for t1
+    let t2 = t2.unwrap_or(one());// set default value for t2
 
-    let q: BigInt = if n < b { &b / &n } else { &n / &b };
-    let r: BigInt = if n < b { modulo(&b, &n) } else { modulo(&n, &b) };
+    if n == &zero() || b == zero() {
+        return zero();
+    }
 
-    if n < b {
-        b = r;
-        s1 -= &t1 * &q;
-        s2 -= &t2 * q;
+    if b < zero() {
+        b = modulo(&b, n);
+    }
+
+    let q = n / &b;
+    let r = modulo(n, &b);
+
+    let t3 = t1 - &q * &t2;
+
+    if r == zero() && b != one() {
+        return zero();
+    }
+
+    if r == zero() {
+        t2
     } else {
-        n = r;
-        t1 -= &s1 * &q;
-        t2 -= &s2 * q;
+        modular_multiplicative_inverse(&b, r, Some(t2), Some(t3))
     }
-
-    if n == zero() || b == zero() {
-        return t1;
-    }
-
-    modular_multiplicative_inverse(n, b, Some(t1), Some(t2), Some(s1), Some(s2))
 }

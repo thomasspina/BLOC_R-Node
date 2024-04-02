@@ -2,7 +2,6 @@ use std::env;
 use ecdsa::secp256k1::curve::{Curve, Point};
 use num_bigint::BigInt;
 
-
 fn main() {
     let args: Vec<String> = env::args().collect();
 
@@ -21,7 +20,7 @@ fn main() {
         },
     };
 
-    let _public_key = secp256k1.g.multiply(bigint(&private_key.clone()));
+    let public_key = secp256k1.g.multiply(bigint(&private_key.clone()));
 
-    //println!("\nPublic key:\n\n{}\n", compress_point(&public_key));
+    println!("\nPublic key:\n\nx: {}\n", &public_key.x);
 }

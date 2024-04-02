@@ -23,7 +23,6 @@ impl Point {
     pub fn multiply(mut self, mut n: BigInt) -> Point {
         let mut res = Point::identity(&self);
         while n > zero() {
-
             if &n & BigInt::one() != BigInt::zero() {
                 res = res.add(&self);
             }
@@ -55,9 +54,8 @@ impl Point {
     fn double(&self) -> Point {
         // we use the modular multiplicative inverse to not have to divide
         let lambda: BigInt = modulo(&(3 * &self.x * &self.x 
-            * modular_multiplicative_inverse(2 * &self.y, 1 * &self.fp, None, None, None, None)), 
+            * modular_multiplicative_inverse(&self.fp, 2 * &self.y, None, None)), 
             &self.fp);
-        
         let rx: BigInt = modulo(&(&lambda * &lambda - &self.x - &self.x), &self.fp);
         let ry: BigInt = modulo(&(lambda * (&self.x - &rx) - &self.y), &self.fp);
 
@@ -86,9 +84,8 @@ impl Point {
         } else {
             let lambda: BigInt = modulo(
                 &((&other.y - &self.y) 
-                * modular_multiplicative_inverse(&other.x - &self.x, 1 * &self.fp, None, None, None, None)
+                * modular_multiplicative_inverse(&self.fp, &other.x - &self.x, None, None)
             ), &self.fp);
-
             let rx: BigInt = modulo(&(&lambda * &lambda - &other.x - &self.x), &self.fp);
             let ry: BigInt = modulo(&(lambda * (&self.x - &rx) - &self.y), &self.fp);
 
