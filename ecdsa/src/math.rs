@@ -4,6 +4,13 @@ use rand::rngs::ThreadRng;
 use num_traits::{zero, one};
 
 /*
+    Helper function to return a hexadecimal string as a bigint
+*/
+pub fn bigint(num: &str) -> BigInt {
+    BigInt::parse_bytes(num.as_bytes(), 16).unwrap()
+}
+
+/*
     Helper function to handle negative numbers with modulus operations.
     Ex: -21 % 4 = -1 but in modular arithmetics -21 mod 4 = 3 
 */
@@ -18,7 +25,7 @@ pub fn modulo(x: &BigInt, m: &BigInt) -> BigInt {
 pub fn entropy() -> BigInt {
     let mut rng: ThreadRng = thread_rng();
 
-    let mut bytes = [0u8; 32];
+    let mut bytes = [0u8; 32]; // 32 bytes is 256 bits
 
     rng.fill(&mut bytes[..]);
 

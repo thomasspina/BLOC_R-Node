@@ -33,6 +33,7 @@ dependencies = [
  "num-bigint",
  "num-traits",
  "rand",
+ "sha256",
 ]
 
 [[package]]

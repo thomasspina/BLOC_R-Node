@@ -1,2 +1,2 @@
+pub mod hash;
 pub use hash::hash;
-mod hash;

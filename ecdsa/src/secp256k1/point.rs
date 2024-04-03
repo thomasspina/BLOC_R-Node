@@ -65,7 +65,7 @@ impl Point {
         Xr = [ L^2 - X - X' ] mod P
         Yr = [ L*(X - Xr) - Y ] mod P
     */
-    fn add(self, other: &Point) -> Point {
+    pub fn add(self, other: &Point) -> Point {
         if self.x == other.x && self.y == (&other.y * -1) { // check P2 = -P1, vertical line, thus P1 + P2 = 0
             Point::identity(&self)
         } else if self.x == other.x && self.y == other.y { // P1 == P2, use point doubling
@@ -89,4 +89,26 @@ impl Point {
             }
         }
     }
+}
+
+/*
+    returns the x coordinate as a compressed point (essentially the public key)
+*/
+pub fn compress_point(point: Point) -> String {
+    let mut prefix: String;
+
+    if &point.y % 2 != zero() {
+        prefix = String::from("03");
+    } else {
+        prefix = String::from("02");
+    }
+
+    let hex_point: String = format!("{:x}", point.x);
+
+    if hex_point.len() < 64 {
+        prefix.push_str("0");
+    }
+    prefix.push_str(&hex_point);
+
+    prefix
 }

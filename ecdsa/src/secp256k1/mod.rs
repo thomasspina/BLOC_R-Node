@@ -6,8 +6,8 @@ const FP: &str = "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC
 
 mod curve;
 mod point;
-mod functions;
+mod signature;
 
 pub use curve::Curve;
-pub use point::Point;
-pub use functions::{compress_point, sign};
+pub use point::{Point, compress_point};
+pub use signature::{Signature, sign, verify_signature};
