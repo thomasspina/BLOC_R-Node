@@ -133,6 +133,11 @@ dependencies = [
 [[package]]
 name = "rblock"
 version = "0.1.0"
+dependencies = [
+ "ecdsa",
+ "num-bigint",
+ "sha256",
+]
 
 [[package]]
 name = "rust_blockchain"

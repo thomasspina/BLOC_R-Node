@@ -1,3 +1,5 @@
+use super::Transaction;
+
 struct Block {
     height: u64,
     hash: u64,

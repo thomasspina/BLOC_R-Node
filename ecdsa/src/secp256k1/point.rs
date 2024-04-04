@@ -1,6 +1,10 @@
+use core::fmt;
+
 use num_bigint::BigInt;
 use num_traits::{zero, One, Zero};
-use crate::math::{modulo, modular_multiplicative_inverse};
+use crate::math::{modulo, modular_multiplicative_inverse, mod_sqrt};
+
+use super::Curve;
 
 #[derive(Debug, Clone)]
 pub struct Point {
@@ -9,15 +13,27 @@ pub struct Point {
     pub fp: BigInt // prime field
 }
 
+// adds to_string for Signature struct
+impl fmt::Display for Point {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "x{};y{};fp{}", self.x, self.y, self.fp)
+    }
+}
+
 impl Point {
     /*
         returns the point multiplied by n. Uses fast binary exponentiation
     */
     pub fn multiply(mut self, mut n: BigInt) -> Point {
-        let mut res = Point::identity(&self);
+        let mut res: Point = Point::identity(&self);
+
+
+        let mut decoy: Point = Point::identity(&self); // used to counter side channel attacks
         while n > zero() {
             if &n & BigInt::one() != BigInt::zero() {
                 res = res.add(&self);
+            } else {
+                decoy = decoy.add(&self);
             }
 
             self = self.double();
@@ -111,4 +127,28 @@ pub fn compress_point(point: Point) -> String {
     prefix.push_str(&hex_point);
 
     prefix
+}
+
+/*
+    returns the Point object from the compressed point 
+*/
+pub fn decompress_point(point: String) -> Point {
+    let curve: Curve = Curve::new();
+
+    let prefix: &str = &point[0..2];
+    let x_hex: &str = &point[2..];
+    let x: BigInt = BigInt::parse_bytes(x_hex.as_bytes(), 16).unwrap();
+
+    // secp256k1 is y^2 = x^3 + 7
+    let y_2: BigInt = &x.pow(3) + &BigInt::from(7);
+
+    let y: BigInt = mod_sqrt(y_2, &curve.g.fp).unwrap();
+
+    let y: BigInt = match prefix {
+        "02" if &y % 2 == zero() => &curve.g.fp - y,
+        "03" if &y % 2 != zero() => &curve.g.fp - y,
+        _ => y,
+    };
+
+    Point { x, y, fp: curve.g.fp }
 }

@@ -1,3 +1,7 @@
+// for more info on the maths here: https://cryptobook.nakov.com/digital-signatures/ecdsa-sign-verify-messages
+
+use core::fmt;
+
 use num_bigint::BigInt;
 use num_traits::zero;
 use sha256::hash;
@@ -7,6 +11,13 @@ use crate::math::{bigint, entropy, modular_multiplicative_inverse, modulo};
 pub struct Signature {
     r: BigInt,
     s: BigInt
+}
+
+// adds to_string for Signature struct
+impl fmt::Display for Signature {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "r{};s{}", self.r, self.s)
+    }
 }
 
 /*
@@ -48,7 +59,6 @@ pub fn verify_signature(signature: &Signature, message: &str, public_key: Point)
     let secp256k1: Curve = super::Curve::new(); // gets parameters for secp256k1 curve
 
     let z: BigInt = bigint(&hash(message.to_owned() + &secp256k1.p.to_string()));
-
 
     let w: BigInt = modulo(&modular_multiplicative_inverse(&secp256k1.n, signature.s.clone(), None, None), 
                             &secp256k1.n);

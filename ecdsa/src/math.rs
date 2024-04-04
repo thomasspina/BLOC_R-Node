@@ -3,6 +3,15 @@ use rand::{thread_rng, Rng};
 use rand::rngs::ThreadRng;
 use num_traits::{zero, one};
 
+
+/*
+// TODO : make the mod_sqrt function
+*/
+pub fn mod_sqrt(x: BigInt, m: &BigInt) -> Option<BigInt> {
+
+    return Some(BigInt::from(8));
+}
+
 /*
     Helper function to return a hexadecimal string as a bigint
 */
