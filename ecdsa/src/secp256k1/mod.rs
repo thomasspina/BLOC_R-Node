@@ -9,5 +9,5 @@ mod point;
 mod signature;
 
 pub use curve::Curve;
-pub use point::{Point, compress_point};
+pub use point::Point;
 pub use signature::{Signature, sign, verify_signature};

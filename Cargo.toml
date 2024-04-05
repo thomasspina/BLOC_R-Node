@@ -8,5 +8,7 @@ edition = "2021"
 
 [dependencies]
 sha256 = { path = "./sha256" }
+rblock = { path = "./rblock" }
 ecdsa = { path = "./ecdsa" }
 num-bigint = "0.4"
+num-traits = "0.2"

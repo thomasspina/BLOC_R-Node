@@ -145,6 +145,8 @@ version = "0.1.0"
 dependencies = [
  "ecdsa",
  "num-bigint",
+ "num-traits",
+ "rblock",
  "sha256",
 ]
 
@@ -153,6 +155,8 @@ name = "sha256"
 version = "0.1.0"
 dependencies = [
  "bitvec",
+ "num-bigint",
+ "num-traits",
 ]
 
 [[package]]

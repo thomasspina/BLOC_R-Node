@@ -1,4 +1,4 @@
-use bitvec::prelude::*; 
+use bitvec::prelude::*;
 
 pub fn hash(data: String) -> String {
     let bit_vec = get_processed_data(data);
@@ -146,11 +146,11 @@ fn get_processed_data(data: String) -> BitVec {
 
     bit_vec.push(true); // add one to the end of the bitvec
 
-    let closest_512_multiple: usize = ((bit_vec.len() + 512 - 1) / 512) * 512;
-
+    let closest_512_multiple: usize = ((bit_vec.len() + 64 + 512 - 1) / 512) * 512;
+    
     // 0 padding
-    for _ in 0..(closest_512_multiple - bit_vec.len() - 64) {
-        bit_vec.push(false); 
+    for _ in 0..closest_512_multiple - bit_vec.len() - 64 {
+        bit_vec.push(false);
     }
 
     let mut data_n_bits: u64 = (data.len() * 8) as u64;

@@ -1,18 +1,35 @@
 use std::env;
-use ecdsa::secp256k1::{verify_signature, Curve, Point, sign};
+use ecdsa::secp256k1::{Curve, Point, Signature};
+use num_traits::zero;
+use rblock::block::Transaction;
 use num_bigint::BigInt;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
 
-    let private_key = args[1].clone();
-    let message = args[2].clone();
+    let private_key1 = args[1].clone();
+    let private_key2 = args[2].clone();
 
     let bigint = |num: &str| -> BigInt { BigInt::parse_bytes(num.as_bytes(), 16).unwrap() };
 
     let secp256k1: Curve = Curve::new();
+    let public_key1: Point = secp256k1.g.multiply(bigint(&private_key1.clone()));
 
-    let public_key: Point = secp256k1.g.multiply(bigint(&private_key.clone()));
+    let secp256k1_2: Curve = Curve::new();
+    let public_key2: Point = secp256k1_2.g.multiply(bigint(&private_key2.clone()));
 
-    println!("{}", verify_signature(&sign(&message, bigint(&private_key), None), &message, public_key));
+
+    let mut t = Transaction {
+        hash: "".to_string(),
+        sender: public_key1.clone(),
+        recipient: public_key2,
+        amount: 10.00,
+        signature: Signature{r: zero(), s: zero()},
+    };
+
+    
+    t.sign(&bigint(&private_key1.clone()));
+    print!("{}",t.verify(public_key1));
+    t.hash = t.get_hash();
+
 }

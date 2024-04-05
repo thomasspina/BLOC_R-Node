@@ -2,9 +2,7 @@ use core::fmt;
 
 use num_bigint::BigInt;
 use num_traits::{zero, One, Zero};
-use crate::math::{modulo, modular_multiplicative_inverse, mod_sqrt};
-
-use super::Curve;
+use crate::math::{modulo, modular_multiplicative_inverse};
 
 #[derive(Debug, Clone)]
 pub struct Point {
@@ -105,50 +103,4 @@ impl Point {
             }
         }
     }
-}
-
-/*
-    returns the x coordinate as a compressed point (essentially the public key)
-*/
-pub fn compress_point(point: Point) -> String {
-    let mut prefix: String;
-
-    if &point.y % 2 != zero() {
-        prefix = String::from("03");
-    } else {
-        prefix = String::from("02");
-    }
-
-    let hex_point: String = format!("{:x}", point.x);
-
-    if hex_point.len() < 64 {
-        prefix.push_str("0");
-    }
-    prefix.push_str(&hex_point);
-
-    prefix
-}
-
-/*
-    returns the Point object from the compressed point 
-*/
-pub fn decompress_point(point: String) -> Point {
-    let curve: Curve = Curve::new();
-
-    let prefix: &str = &point[0..2];
-    let x_hex: &str = &point[2..];
-    let x: BigInt = BigInt::parse_bytes(x_hex.as_bytes(), 16).unwrap();
-
-    // secp256k1 is y^2 = x^3 + 7
-    let y_2: BigInt = &x.pow(3) + &BigInt::from(7);
-
-    let y: BigInt = mod_sqrt(y_2, &curve.g.fp).unwrap();
-
-    let y: BigInt = match prefix {
-        "02" if &y % 2 == zero() => &curve.g.fp - y,
-        "03" if &y % 2 != zero() => &curve.g.fp - y,
-        _ => y,
-    };
-
-    Point { x, y, fp: curve.g.fp }
 }

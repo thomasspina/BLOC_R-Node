@@ -9,8 +9,8 @@ use super::{Curve, Point};
 use crate::math::{bigint, entropy, modular_multiplicative_inverse, modulo};
 
 pub struct Signature {
-    r: BigInt,
-    s: BigInt
+    pub r: BigInt,
+    pub s: BigInt
 }
 
 // adds to_string for Signature struct
