@@ -17,8 +17,7 @@ impl Curve {
             n: bigint(super::N),
             g: Point {
                 x: bigint(super::X),
-                y: bigint(super::Y),
-                fp: bigint(super::FP),
+                y: bigint(super::Y)
             }}
     }
 }

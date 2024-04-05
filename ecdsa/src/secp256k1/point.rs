@@ -2,19 +2,19 @@ use core::fmt;
 
 use num_bigint::BigInt;
 use num_traits::{zero, One, Zero};
-use crate::math::{modulo, modular_multiplicative_inverse};
+use crate::{math::{modular_multiplicative_inverse, modulo, bigint}, secp256k1::FP};
 
 #[derive(Debug, Clone)]
 pub struct Point {
     pub x: BigInt,
-    pub y: BigInt,
-    pub fp: BigInt // prime field
+    pub y: BigInt
+    // fp prime field is now in curve or a constant from mod.rs
 }
 
 // adds to_string for Signature struct
 impl fmt::Display for Point {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "x{};y{};fp{}", self.x, self.y, self.fp)
+        write!(f, "x{};y{}", self.x, self.y)
     }
 }
 
@@ -47,8 +47,7 @@ impl Point {
     fn identity(&self) -> Point {
         Point {
             x: zero(),
-            y: zero(),
-            fp: self.fp.clone()
+            y: zero()
         }
     }
 
@@ -60,16 +59,17 @@ impl Point {
     */
     fn double(&self) -> Point {
         // we use the modular multiplicative inverse to not have to divide
+        let fp: &BigInt = &bigint(FP);
+
         let lambda: BigInt = modulo(&(3 * &self.x * &self.x 
-            * modular_multiplicative_inverse(&self.fp, 2 * &self.y, None, None)), 
-            &self.fp);
-        let rx: BigInt = modulo(&(&lambda * &lambda - &self.x - &self.x), &self.fp);
-        let ry: BigInt = modulo(&(lambda * (&self.x - &rx) - &self.y), &self.fp);
+            * modular_multiplicative_inverse(fp, 2 * &self.y, None, None)), 
+            fp);
+        let rx: BigInt = modulo(&(&lambda * &lambda - &self.x - &self.x), fp);
+        let ry: BigInt = modulo(&(lambda * (&self.x - &rx) - &self.y), fp);
 
         Point {
             x: rx,
-            y: ry,
-            fp: self.fp.clone()
+            y: ry
         }
     }
 
@@ -89,17 +89,17 @@ impl Point {
         } else if other.x == zero() && other.y == zero() { // P1 + 0 = P1
             self
         } else {
+            let fp: &BigInt = &bigint(FP);
             let lambda: BigInt = modulo(
                 &((&other.y - &self.y) 
-                * modular_multiplicative_inverse(&self.fp, &other.x - &self.x, None, None)
-            ), &self.fp);
-            let rx: BigInt = modulo(&(&lambda * &lambda - &other.x - &self.x), &self.fp);
-            let ry: BigInt = modulo(&(lambda * (&self.x - &rx) - &self.y), &self.fp);
+                * modular_multiplicative_inverse(fp, &other.x - &self.x, None, None)
+            ), fp);
+            let rx: BigInt = modulo(&(&lambda * &lambda - &other.x - &self.x), fp);
+            let ry: BigInt = modulo(&(lambda * (&self.x - &rx) - &self.y), fp);
 
             Point {
                 x: rx,
-                y: ry,
-                fp: self.fp
+                y: ry
             }
         }
     }
