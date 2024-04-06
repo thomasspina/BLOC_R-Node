@@ -1,21 +1,30 @@
-use ecdsa::secp256k1::{self, Point};
+use ecdsa::secp256k1::{sign, verify_signature, Point, Signature};
 use num_bigint::BigInt;
+use num_traits::zero;
 
 pub struct Transaction {
-    pub hash: String,
-    pub sender: secp256k1::Point,
-    pub recipient: secp256k1::Point,
+    pub sender: Point,
+    pub recipient: Point,
     pub amount: f32,
-    pub signature: secp256k1::Signature
+    pub signature: Signature
 }
 
 impl Transaction { 
+    pub fn new(sender: Point, recipient: Point, amount: f32) -> Transaction {
+        Transaction {
+            sender,
+            recipient,
+            amount,
+            signature: Signature { r: zero(), s: zero() }
+        }
+    }
+
     pub fn sign(&mut self, secret_key: &BigInt) {
-        self.signature = secp256k1::sign(&self.get_message(), secret_key.clone(), None);
+        self.signature = sign(&self.get_message(), secret_key.clone(), None);
     }
 
     pub fn verify(&self, public_key: Point) -> bool {
-        secp256k1::verify_signature(&self.signature, &self.get_message(), public_key)
+        verify_signature(&self.signature, &self.get_message(), public_key)
     }
 
     pub fn get_message(&self) -> String {
@@ -23,9 +32,7 @@ impl Transaction {
     }
 
     pub fn get_hash(&self) -> String {
-        // TODO : causes subtraction overflow?
-        //sha256::hash(format!("{}{}{}{}", self.sender, self.recipient, self.amount, self.signature))
-        format!("{}{}{}{}", self.sender, self.recipient, self.amount, self.signature)
+        sha256::hash(format!("{}{}{}{}", self.sender, self.recipient, self.amount, self.signature))
     }
 }
 

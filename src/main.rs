@@ -20,7 +20,6 @@ fn main() {
 
 
     let mut t = Transaction {
-        hash: "".to_string(),
         sender: public_key1.clone(),
         recipient: public_key2,
         amount: 10.00,
@@ -30,6 +29,5 @@ fn main() {
     
     t.sign(&bigint(&private_key1.clone()));
     print!("{}",t.verify(public_key1));
-    t.hash = t.get_hash();
 
 }
