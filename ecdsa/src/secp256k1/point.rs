@@ -1,5 +1,4 @@
 use core::fmt;
-
 use num_bigint::BigInt;
 use num_traits::{zero, One, Zero};
 use crate::{math::{modular_multiplicative_inverse, modulo, bigint}, secp256k1::FP};

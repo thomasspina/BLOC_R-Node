@@ -8,6 +8,7 @@ use sha256::hash;
 use super::{Curve, Point};
 use crate::math::{bigint, entropy, modular_multiplicative_inverse, modulo};
 
+#[derive(Clone)]
 pub struct Signature {
     pub r: BigInt,
     pub s: BigInt

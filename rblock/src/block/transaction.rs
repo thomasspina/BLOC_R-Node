@@ -2,6 +2,7 @@ use ecdsa::secp256k1::{sign, verify_signature, Point, Signature};
 use num_bigint::BigInt;
 use num_traits::zero;
 
+#[derive(Clone)]
 pub struct Transaction {
     pub sender: Point,
     pub recipient: Point,

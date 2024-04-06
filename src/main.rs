@@ -18,7 +18,6 @@ fn main() {
     let secp256k1_2: Curve = Curve::new();
     let public_key2: Point = secp256k1_2.g.multiply(bigint(&private_key2.clone()));
 
-
     let mut t = Transaction {
         sender: public_key1.clone(),
         recipient: public_key2,
@@ -26,7 +25,6 @@ fn main() {
         signature: Signature{r: zero(), s: zero()},
     };
 
-    
     t.sign(&bigint(&private_key1.clone()));
     print!("{}",t.verify(public_key1));
 
