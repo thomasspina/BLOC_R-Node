@@ -1,34 +1,36 @@
 use ecdsa::secp256k1::{sign, verify_signature, Point, Signature};
 use num_bigint::BigInt;
-use num_traits::zero;
 
 #[derive(Clone)]
 pub struct Transaction {
-    pub sender: Point,
-    pub recipient: Point,
-    pub amount: f32,
-    pub signature: Signature
+    sender: Point,
+    recipient: Point,
+    amount: f32,
+    signature: Signature
 }
 
 impl Transaction { 
-    pub fn new(sender: Point, recipient: Point, amount: f32) -> Transaction {
+    pub fn new(sender: &Point, recipient: &Point, amount: f32, private_key: &BigInt) -> Self {
+        let message: String = sender.to_string() + &recipient.to_string() + &amount.to_string();
+        let signature: Signature = sign(&message, private_key.clone(), None);
+
         Transaction {
-            sender,
-            recipient,
+            sender: sender.clone(),
+            recipient: recipient.clone(),
             amount,
-            signature: Signature { r: zero(), s: zero() }
+            signature
         }
     }
 
-    pub fn sign(&mut self, secret_key: &BigInt) {
-        self.signature = sign(&self.get_message(), secret_key.clone(), None);
+    pub fn get_sender(&self) -> &Point { &self.sender }
+    pub fn get_recipient(&self) -> &Point { &self.recipient }
+    pub fn get_amount(&self) -> &f32 { &self.amount }
+
+    pub fn verify(&self) -> bool {
+        verify_signature(&self.signature, &self.get_message(), self.sender.clone())
     }
 
-    pub fn verify(&self, public_key: Point) -> bool {
-        verify_signature(&self.signature, &self.get_message(), public_key)
-    }
-
-    pub fn get_message(&self) -> String {
+    fn get_message(&self) -> String {
         self.sender.to_string() + &self.recipient.to_string() + &self.amount.to_string()
     }
 

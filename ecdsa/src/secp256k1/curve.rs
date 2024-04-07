@@ -1,7 +1,7 @@
 use num_bigint::BigInt;
 use super::Point;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Curve {
     pub p: BigInt,
     pub n: BigInt,
