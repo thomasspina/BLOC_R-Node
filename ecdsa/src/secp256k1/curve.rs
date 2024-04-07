@@ -9,7 +9,7 @@ pub struct Curve {
 }
 
 impl Curve {
-    pub fn new() -> Curve {
+    pub fn new() -> Self {
         let bigint = |num: &str| -> BigInt { BigInt::parse_bytes(num.as_bytes(), 16).unwrap() };
 
         Curve {

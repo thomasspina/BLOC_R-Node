@@ -1,7 +1,6 @@
 // for more info on the maths here: https://cryptobook.nakov.com/digital-signatures/ecdsa-sign-verify-messages
 
 use core::fmt;
-
 use num_bigint::BigInt;
 use num_traits::zero;
 use sha256::hash;

@@ -1,1 +1,2 @@
-pub mod block;
+mod block;
+pub use block::{Block, Transaction, Blockchain};
