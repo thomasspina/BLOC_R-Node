@@ -1,11 +1,12 @@
 use ecdsa::secp256k1::Curve;
 use num_bigint::BigInt;
-use rblock::{Block, Transaction};
+use rblock::{Block, Blockchain, Transaction};
 
 pub fn bigint(num: &str) -> BigInt {
     BigInt::parse_bytes(num.as_bytes(), 16).unwrap()
 }
 
+// testing to see if blockchain works correctly
 fn main() { 
     let p_1 = bigint("78c86580d3b2c9f8392e01f6635356439f706ca200db266ab734504a8bb9553b");
     let p_2 = bigint("552d2967fac5c16573049a4b03b015801688496186873f5a60a7e3bfeeb12570");
@@ -32,12 +33,34 @@ fn main() {
     let curve_6 = Curve::new();
     let point_6 = curve_6.g.multiply(p_6.clone());
 
-    let t_1 = Transaction::new(&point_1, &point_2, 10.23, &p_1);
+    let t_1 = Transaction::new(&point_1, &point_2, 4.23, &p_1);
     let t_2 = Transaction::new(&point_3, &point_4, 0.24, &p_3);
     let t_3 = Transaction::new(&point_5, &point_6, 5.67, &p_5);
+    let t_4 = Transaction::new(&point_2, &point_3, 9.34, &p_2);
+    let t_5 = Transaction::new(&point_4, &point_5, 0.98, &p_4);
+    let t_6 = Transaction::new(&point_6, &point_3, 3.45, &p_6);
 
-    let g = Block::new_genesis();
-    let b = Block::new(&g, &vec![t_1, t_2, t_3]).unwrap();
+    let _transaction_vec = &vec![t_1.clone(), t_2.clone(), t_3.clone(), t_4.clone(), t_5.clone(), t_6.clone()];
 
-    print!("{}", b.get_hash());
+    let other_transactions: &Vec<Transaction> = &vec![];
+
+    let mut blockchain = Blockchain::new();
+    println!("{}", blockchain.get_latest_block());
+    for _ in 0..25 {
+        let mut b = Block::new(blockchain.get_latest_block(), other_transactions);
+        let diff = blockchain.get_difficulty();
+        println!("{}", diff);
+        b.reward_miner(&point_1);
+        b.set_difficulty(diff);
+
+        loop {
+            if b.get_hash()[b.get_hash().len() - diff as usize..] == *"0".repeat(diff.into()) {
+                break;
+            }
+            b.increment_and_hash();
+        }
+
+        blockchain.add_block(b);
+        println!("\n{}", blockchain.get_latest_block());
+    }
 }

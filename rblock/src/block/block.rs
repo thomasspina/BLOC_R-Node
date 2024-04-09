@@ -1,6 +1,10 @@
+use core::fmt;
+use ecdsa::secp256k1::Point;
+use num_bigint::BigInt;
 use sha256::hash;
 use super::functions;
 use super::Transaction;
+use super::REWARD;
 
 #[derive(Clone)]
 pub struct Block {
@@ -10,32 +14,43 @@ pub struct Block {
     prev_hash: String,
     nonce: u32,
     difficulty: u8, // number of tailing zeros
-    merkle_root: String,
+    merkel_root: String,
     transactions: Vec<Transaction>
+}
+
+// adds to_string for Block struct
+impl fmt::Display for Block {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "\theight: {}\n\thash: {}\n\ttimestamp: {}\n\tprev_hash: {}\n\tnonce: {}\n\tdifficulty: {}\n\tmerkel root: {}", 
+            self.height, 
+            self.hash,
+            self.timestamp,
+            self.prev_hash,
+            self.nonce,
+            self.difficulty,
+            self.merkel_root)
+    }
 }
 
 impl Block {
     pub fn new_genesis() -> Self {
-        Block {
+        let mut genesis: Block = Block {
             height: 0,
             hash: "".to_owned(),
             timestamp: functions::get_unix_time(),
             nonce: 0, 
             difficulty: 0, 
             prev_hash: "".to_owned(),
-            merkle_root: "".to_owned(),
+            merkel_root: "".to_owned(),
             transactions: vec![]
-        }
+        };
+
+        genesis.set_hash();
+        
+        genesis
     }
 
-    // returns None if one transaction is invalid
-    pub fn new(prev_block: &Block, transactions: &Vec<Transaction>) -> Option<Self> {
-        for transaction in transactions {
-            if !transaction.verify() {
-                return None;
-            }
-        }
-
+    pub fn new(prev_block: &Block, transactions: &Vec<Transaction>) -> Self {
         let mut new_block: Block = Block {
             height: prev_block.height + 1,
             hash: String::from(""), // hash needs to be set after block creation
@@ -43,41 +58,75 @@ impl Block {
             nonce: 0,
             difficulty: prev_block.difficulty,
             prev_hash: prev_block.hash.clone(),
-            merkle_root: functions::get_merkel_root(transactions),
+            merkel_root: functions::get_merkel_root(transactions),
             transactions: transactions.to_owned()
         };
 
         new_block.set_hash();
 
-        Some(new_block)
+        new_block
+    }
+
+    // reward miner only if another reward doesn't already exist
+    pub fn reward_miner(&mut self, miner_address: &Point) {
+        for transaction in &self.transactions {
+            if transaction.get_sender() == Point::identity() {
+                eprintln!("There is already a reward in this block.");
+                return;
+            }
+        }
+
+        let reward_transaction: Transaction = Transaction::new(&Point::identity(), 
+                                                        miner_address, 
+                                                        REWARD, 
+                                                        &BigInt::from(0));
+        
+        self.transactions.push(reward_transaction);
+        self.merkel_root = functions::get_merkel_root(&self.transactions);
+        self.set_hash();
     }
 
     // used in case the difficulty has changed since the previous block
     pub fn set_difficulty(&mut self, diff: u8) {
         self.difficulty = diff;
+        self.set_hash();
     }
 
-    pub fn incr_nonce(&mut self) {
+    pub fn increment_and_hash(&mut self) {
+        if self.nonce == u32::MAX {
+            eprintln!("Nonce is at max u32, consider changing transactions.");
+            return;
+        }
+
         self.nonce += 1;
+        self.set_hash();
     }
 
-    pub fn get_hash(&self) -> &str {
-        &self.hash
+    pub fn get_hash(&self) -> String {
+        self.hash.clone()
     }
     
-    pub fn get_prev_hash(&self) -> &str {
-        &self.prev_hash
+    pub fn get_merkel_root(&self) -> String {
+        self.merkel_root.clone()
     }
 
-    pub fn get_transactions(&self) -> &Vec<Transaction> {
-        &self.transactions
+    pub fn get_prev_hash(&self) -> String {
+        self.prev_hash.clone()
     }
 
-    pub fn get_difficulty(&self) -> &u8 {
-        &self.difficulty
+    pub fn get_transactions(&self) -> Vec<Transaction> {
+        self.transactions.clone()
     }
 
-    pub fn set_hash(&mut self) {
+    pub fn get_difficulty(&self) -> u8 {
+        self.difficulty.clone()
+    }
+
+    pub fn get_timestamp(&self) -> u64 {
+        self.timestamp.clone()
+    }
+
+    fn set_hash(&mut self) {
         self.hash = hash(self.get_message());
     }
 
@@ -88,6 +137,6 @@ impl Block {
                 self.prev_hash,
                 self.nonce,
                 self.difficulty,
-                self.merkle_root)
+                self.merkel_root)
     }
 }

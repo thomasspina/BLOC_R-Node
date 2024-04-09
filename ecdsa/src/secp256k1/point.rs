@@ -10,10 +10,17 @@ pub struct Point {
     // fp prime field is now in curve or a constant from mod.rs
 }
 
-// adds to_string for Signature struct
+// adds to_string for Point struct
 impl fmt::Display for Point {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "x{};y{}", self.x, self.y)
+        write!(f, "x{} y{}", self.x, self.y)
+    }
+}
+
+// adds == comparison
+impl PartialEq for Point {
+    fn eq(&self, other: &Self) -> bool {
+        self.x == other.x && self.y == other.y
     }
 }
 
@@ -22,10 +29,10 @@ impl Point {
         returns the point multiplied by n. Uses fast binary exponentiation
     */
     pub fn multiply(mut self, mut n: BigInt) -> Point {
-        let mut res: Point = Point::identity(&self);
+        let mut res: Point = Point::identity();
 
 
-        let mut decoy: Point = Point::identity(&self); // used to counter side channel attacks
+        let mut decoy: Point = Point::identity(); // used to counter side channel attacks
         while n > zero() {
             if &n & BigInt::one() != BigInt::zero() {
                 res = res.add(&self);
@@ -43,7 +50,7 @@ impl Point {
     /*
         Returns the identity element of the group
     */
-    fn identity(&self) -> Point {
+    pub fn identity() -> Self {
         Point {
             x: zero(),
             y: zero()
@@ -80,7 +87,7 @@ impl Point {
     */
     pub fn add(self, other: &Point) -> Point {
         if self.x == other.x && self.y == (&other.y * -1) { // check P2 = -P1, vertical line, thus P1 + P2 = 0
-            Point::identity(&self)
+            Point::identity()
         } else if self.x == other.x && self.y == other.y { // P1 == P2, use point doubling
             self.double()
         } else if self.x == zero() && self.y == zero() { // 0 + P2 = P2

@@ -1,3 +1,4 @@
+use core::fmt;
 use ecdsa::secp256k1::{sign, verify_signature, Point, Signature};
 use num_bigint::BigInt;
 
@@ -7,6 +8,20 @@ pub struct Transaction {
     recipient: Point,
     amount: f32,
     signature: Signature
+}
+
+// adds to_string for Signature struct
+impl fmt::Display for Transaction {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "sender: {}\n
+            recipient: {}\n
+            amount: {}\n
+            signature: {}", 
+            self.sender, 
+            self.recipient,
+            self.amount,
+            self.signature)
+    }
 }
 
 impl Transaction { 
@@ -22,9 +37,9 @@ impl Transaction {
         }
     }
 
-    pub fn get_sender(&self) -> &Point { &self.sender }
-    pub fn get_recipient(&self) -> &Point { &self.recipient }
-    pub fn get_amount(&self) -> &f32 { &self.amount }
+    pub fn get_sender(&self) -> Point { self.sender.clone() }
+    pub fn get_recipient(&self) -> Point { self.recipient.clone() }
+    pub fn get_amount(&self) -> f32 { self.amount.clone() }
 
     pub fn verify(&self) -> bool {
         verify_signature(&self.signature, &self.get_message(), self.sender.clone())
