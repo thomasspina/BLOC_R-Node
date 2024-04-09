@@ -1,11 +1,13 @@
 use bitvec::prelude::*;
 
+use crate::{HX, ROUND_CONSTANTS};
+
 pub fn hash(data: String) -> String {
     let bit_vec = get_processed_data(data);
     let closest_512_multiple: usize = ((bit_vec.len() + 512 - 1) / 512) * 512;
 
-    let k: [u32; 64] = get_round_constants();
-    let mut hash_values: [u32; 8] = get_initial_hash_values();
+    let k: [u32; 64] = ROUND_CONSTANTS;
+    let mut hash_values: [u32; 8] = HX;
 
     // 512bits chunk loop
     for i in (512..=closest_512_multiple).step_by(512) {
@@ -65,6 +67,8 @@ pub fn hash(data: String) -> String {
     return hash_values.iter().map(|&val| format!("{:08x}", val)).collect();
 }
 
+
+// method used to generate the hash constants in lib.rs
 pub fn get_initial_hash_values() -> [u32; 8] {
     let mut h: [u32; 8] = [0; 8];
 
@@ -76,6 +80,7 @@ pub fn get_initial_hash_values() -> [u32; 8] {
     h
 }
 
+// method used to generate the round constants in lib.rs
 pub fn get_round_constants() -> [u32; 64] {
     let mut k: [u32; 64] = [0; 64];
     
