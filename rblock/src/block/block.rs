@@ -1,6 +1,5 @@
 use core::fmt;
 use ecdsa::secp256k1::Point;
-use num_bigint::BigInt;
 use sha256::hash;
 use super::functions;
 use super::Transaction;
@@ -75,11 +74,8 @@ impl Block {
                 return;
             }
         }
-
-        let reward_transaction: Transaction = Transaction::new(&Point::identity(), 
-                                                        miner_address, 
-                                                        REWARD, 
-                                                        &BigInt::from(0));
+        
+        let reward_transaction: Transaction = Transaction::reward_transaction(miner_address, REWARD);
         
         self.transactions.push(reward_transaction);
         self.merkel_root = functions::get_merkel_root(&self.transactions);

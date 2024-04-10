@@ -1,8 +1,10 @@
 use core::fmt;
 use num_bigint::BigInt;
-use num_traits::{zero, One, Zero};
-use crate::{math::{modular_multiplicative_inverse, modulo, bigint}, secp256k1::FP};
+use num_traits::zero;
+use crate::{math::{modular_multiplicative_inverse, modulo, bigint, calculate_wnaf}, secp256k1::FP};
 
+
+// TODO: implement Jacobi points, it removes a lot of modular multiplicative invert calls
 #[derive(Debug, Clone)]
 pub struct Point {
     pub x: BigInt,
@@ -26,26 +28,43 @@ impl PartialEq for Point {
 
 impl Point {
     /*
-        returns the point multiplied by n. Uses fast binary exponentiation
+        returns the point multiplied by n using non-adjacent scalar representation.
+        https://en.wikipedia.org/wiki/Non-adjacent_form
+
+        it allows for much less additions and doubling, especially using pre comps
     */
-    pub fn multiply(mut self, mut n: BigInt) -> Point {
-        let mut res: Point = Point::identity();
+    pub fn multiply(self, n: BigInt, width: u32, pre_comp: &std::vec::Vec<Point>) -> Point {
+        let wnaf: Vec<i8> = calculate_wnaf(width, n);
 
+        let mut q: Point = Point::identity();
 
-        let mut decoy: Point = Point::identity(); // used to counter side channel attacks
-        while n > zero() {
-            if &n & BigInt::one() != BigInt::zero() {
-                res = res.add(&self);
-            } else {
-                decoy = decoy.add(&self);
+        let mut i: i32 = (wnaf.len() as i32) - 1;
+
+        while i > -1 {
+            q = q.double();
+
+            let n: usize = i as usize;
+
+            if wnaf[n] > 0 {
+                let d: i8 = (wnaf[n] - 1) / 2;
+
+                q = q.add(&pre_comp[d as usize]);
+            } else if wnaf[n] < 0 {
+                let d: i8 = (-wnaf[n] - 1) / 2;
+
+                let z: Point = Point {
+                    x: pre_comp[d as usize].x.clone(),
+                    y: pre_comp[d as usize].y.clone() * -1
+                };
+
+                q = q.add(&z);
             }
 
-            self = self.double();
-            n >>= 1;
+            i = i - 1;
         }
 
-        res
-    }    
+        q
+    } 
 
     /*
         Returns the identity element of the group
@@ -109,4 +128,21 @@ impl Point {
             }
         }
     }
+}
+
+/*
+    returns a list of precomputed points of width w from Point Q
+*/
+pub fn precompute_points(mut q: Point, w: u32) -> std::vec::Vec<Point> {
+    let mut p: Vec<Point> = vec![q.clone()];
+
+    q = q.double();
+
+    for j in 1..(1 << (w - 1)) {
+        let mut buffer: Point = q.clone();
+        buffer = buffer.add(&p[(j - 1) as usize]);
+        p.push(buffer);
+    }
+
+    p
 }

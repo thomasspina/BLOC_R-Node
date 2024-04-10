@@ -4,13 +4,20 @@ use core::fmt;
 use num_bigint::BigInt;
 use num_traits::zero;
 use sha256::hash;
-use super::{Curve, Point};
-use crate::math::{bigint, entropy, modular_multiplicative_inverse, modulo};
+use super::{Curve, Point, W};
+use crate::{math::{bigint, entropy, modular_multiplicative_inverse, modulo}, 
+            secp256k1::get_curve_computed_points};
 
 #[derive(Clone)]
 pub struct Signature {
     r: BigInt,
     s: BigInt
+}
+
+impl Signature {
+    pub fn get_empty() -> Self {
+        Signature { r: zero(), s: zero() }
+    }
 }
 
 // adds to_string for Signature struct
@@ -30,7 +37,7 @@ pub fn sign(message: &str, d: BigInt, k: Option<BigInt>) -> Signature {
 
     let k: BigInt = k.unwrap_or(modulo(&entropy(), &secp256k1.p));
 
-    let p: Point = secp256k1.g.multiply(k.clone());
+    let p: Point = secp256k1.g.multiply(k.clone(), W, get_curve_computed_points());
 
     let r: BigInt = modulo(&p.x, &secp256k1.p);
     if r == zero() {
@@ -66,8 +73,10 @@ pub fn verify_signature(signature: &Signature, message: &str, public_key: Point)
     let u1: BigInt = modulo(&(z * &w), &secp256k1.n);
     let u2: BigInt = modulo(&(&signature.r * &w), &secp256k1.n); 
 
-    let p1: Point = secp256k1.g.multiply(u1);
-    let p2: Point = public_key.multiply(u2);
+    let p1: Point = secp256k1.g.multiply(u1, W, get_curve_computed_points());
+    let public_key_precomp: Vec<Point> = super::point::precompute_points(public_key.clone(), W);
+
+    let p2: Point = public_key.multiply(u2.clone(), W, &public_key_precomp);
 
     let res: Point = p1.add(&p2);
 

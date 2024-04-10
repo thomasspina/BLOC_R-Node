@@ -13,10 +13,7 @@ pub struct Transaction {
 // adds to_string for Signature struct
 impl fmt::Display for Transaction {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "sender: {}\n
-            recipient: {}\n
-            amount: {}\n
-            signature: {}", 
+        write!(f, "\tsender: {}\n\trecipient: {}\n\tamount: {}\n\tsignature: {}", 
             self.sender, 
             self.recipient,
             self.amount,
@@ -25,9 +22,18 @@ impl fmt::Display for Transaction {
 }
 
 impl Transaction { 
+    pub fn reward_transaction(recipient: &Point, amount: f32) -> Self {
+        Transaction {
+            sender: Point::identity(),
+            recipient: recipient.clone(),
+            amount,
+            signature: Signature::get_empty()
+        }
+    }
+
     pub fn new(sender: &Point, recipient: &Point, amount: f32, private_key: &BigInt) -> Self {
         let message: String = sender.to_string() + &recipient.to_string() + &amount.to_string();
-        let signature: Signature = sign(&message, private_key.clone(), None);
+        let signature: Signature = sign(&message, private_key.clone(), Some(BigInt::from(90127834)));
 
         Transaction {
             sender: sender.clone(),
@@ -40,6 +46,7 @@ impl Transaction {
     pub fn get_sender(&self) -> Point { self.sender.clone() }
     pub fn get_recipient(&self) -> Point { self.recipient.clone() }
     pub fn get_amount(&self) -> f32 { self.amount.clone() }
+    pub fn get_signature(&self) -> Signature { self.signature.clone() }
 
     pub fn verify(&self) -> bool {
         verify_signature(&self.signature, &self.get_message(), self.sender.clone())

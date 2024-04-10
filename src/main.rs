@@ -1,8 +1,8 @@
-use ecdsa::secp256k1::Curve;
+use ecdsa::secp256k1::{get_curve_computed_points, Curve, W};
 use num_bigint::BigInt;
 use rblock::{Block, Blockchain, Transaction};
 
-pub fn bigint(num: &str) -> BigInt {
+fn bigint(num: &str) -> BigInt {
     BigInt::parse_bytes(num.as_bytes(), 16).unwrap()
 }
 
@@ -16,22 +16,22 @@ fn main() {
     let p_6 = bigint("27b84b5e3a3a37472cd58bbca2269daf78f03cb71251ac7828077bd613bc12e5");
 
     let curve_1 = Curve::new();
-    let point_1 = curve_1.g.multiply(p_1.clone());
+    let point_1 = curve_1.g.multiply(p_1.clone(), W, get_curve_computed_points());
 
     let curve_2 = Curve::new();
-    let point_2 = curve_2.g.multiply(p_2.clone());
+    let point_2 = curve_2.g.multiply(p_2.clone(), W, get_curve_computed_points());
 
     let curve_3 = Curve::new();
-    let point_3 = curve_3.g.multiply(p_3.clone());
+    let point_3 = curve_3.g.multiply(p_3.clone(), W, get_curve_computed_points());
 
     let curve_4 = Curve::new();
-    let point_4 = curve_4.g.multiply(p_4.clone());
+    let point_4 = curve_4.g.multiply(p_4.clone(), W, get_curve_computed_points());
 
     let curve_5 = Curve::new();
-    let point_5 = curve_5.g.multiply(p_5.clone());
+    let point_5 = curve_5.g.multiply(p_5.clone(), W, get_curve_computed_points());
 
     let curve_6 = Curve::new();
-    let point_6 = curve_6.g.multiply(p_6.clone());
+    let point_6 = curve_6.g.multiply(p_6.clone(), W, get_curve_computed_points());
 
     let t_1 = Transaction::new(&point_1, &point_2, 4.23, &p_1);
     let t_2 = Transaction::new(&point_3, &point_4, 0.24, &p_3);
@@ -40,16 +40,13 @@ fn main() {
     let t_5 = Transaction::new(&point_4, &point_5, 0.98, &p_4);
     let t_6 = Transaction::new(&point_6, &point_3, 3.45, &p_6);
 
-    let _transaction_vec = &vec![t_1.clone(), t_2.clone(), t_3.clone(), t_4.clone(), t_5.clone(), t_6.clone()];
-
-    let other_transactions: &Vec<Transaction> = &vec![];
+    let transaction_vec = &vec![t_1.clone(), t_2.clone(), t_3.clone(), t_4.clone(), t_5.clone(), t_6.clone()];
 
     let mut blockchain = Blockchain::new();
     println!("{}", blockchain.get_latest_block());
-    for _ in 0..25 {
-        let mut b = Block::new(blockchain.get_latest_block(), other_transactions);
+    for _ in 0..10 {
+        let mut b = Block::new(blockchain.get_latest_block(), transaction_vec);
         let diff = blockchain.get_difficulty();
-        println!("{}", diff);
         b.reward_miner(&point_1);
         b.set_difficulty(diff);
 

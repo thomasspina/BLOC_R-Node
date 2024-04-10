@@ -2,6 +2,7 @@ use num_bigint::{BigInt, Sign};
 use rand::{thread_rng, Rng};
 use rand::rngs::ThreadRng;
 use num_traits::{zero, one};
+use num_traits::ToPrimitive;
 
 /*
     Helper function to return a hexadecimal string as a bigint
@@ -18,6 +19,37 @@ pub fn modulo(x: &BigInt, m: &BigInt) -> BigInt {
     ((x % m) + m) % m
 }
 
+/*
+    Converts an integer n to a w - width NAF representation for 
+    less additions during multiplication algo.
+*/
+pub fn calculate_wnaf(w: u32, mut n: BigInt) -> Vec<i8> {
+    let mut wnaf: Vec<i8> = Vec::new();
+
+    let modulus: BigInt = BigInt::from(1 << w);
+    let mut i: usize = 0;
+
+    while n >= one() {
+        if &n & &one() == one() {
+            let remainder: BigInt = modulo(&n, &modulus);
+
+            if remainder > BigInt::from((1 << (w - 1)) - 1) {
+                wnaf.push((remainder - &modulus).to_i8().unwrap());
+            } else {
+                wnaf.push(remainder.to_i8().unwrap());
+            }
+
+            n = n - wnaf[i];
+        } else {
+            wnaf.push(0);
+        }
+
+        n >>= 1;
+        i += 1;
+    }
+
+    wnaf
+}
 
 /*
     Helper function to get a random 256bit long BigInt that is cryptographically secure.
@@ -25,7 +57,7 @@ pub fn modulo(x: &BigInt, m: &BigInt) -> BigInt {
 pub fn entropy() -> BigInt {
     let mut rng: ThreadRng = thread_rng();
 
-    let mut bytes = [0u8; 32]; // 32 bytes is 256 bits
+    let mut bytes: [u8; 32] = [0u8; 32]; // 32 bytes is 256 bits
 
     rng.fill(&mut bytes[..]);
 

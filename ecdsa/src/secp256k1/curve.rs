@@ -5,7 +5,7 @@ use super::Point;
 pub struct Curve {
     pub p: BigInt,
     pub n: BigInt,
-    pub g: Point
+    pub g: Point,
 }
 
 impl Curve {
@@ -18,6 +18,7 @@ impl Curve {
             g: Point {
                 x: bigint(super::X),
                 y: bigint(super::Y)
-            }}
+            }
+        }
     }
 }

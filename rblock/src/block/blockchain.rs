@@ -19,6 +19,12 @@ impl Blockchain {
         &self.chain[self.chain.len() - 1]
     }
 
+    // TODO: rework the difficulty mechanism
+        // its hard to get a good average time when only using zeros, maybe make it a number range system?
+        // like each time the difficulty increases the range shrinks for one of the digits until its only zero,
+        // then it does the same for the next digit
+
+
     pub fn get_difficulty(&self) -> u8 {
         let latest_diff: u8 = self.get_latest_block().get_difficulty();
         if self.chain.len() < MEAN_BLOCK_COUNT as usize {
@@ -51,6 +57,7 @@ impl Blockchain {
             // Point::identity is miner reward
             if transaction.get_sender() != Point::identity() && !transaction.verify() {
                 eprintln!("Cannot add block, a transaction is invalid");
+                println!("{}", transaction);
                 return;
             }
         }
