@@ -44,14 +44,14 @@ fn main() {
 
     let mut blockchain = Blockchain::new();
     println!("{}", blockchain.get_latest_block());
-    for _ in 0..10 {
+    for _ in 0..100 {
         let mut b = Block::new(blockchain.get_latest_block(), transaction_vec);
-        let diff = blockchain.get_difficulty();
+        let diff = Blockchain::get_difficulty(&blockchain);
         b.reward_miner(&point_1);
         b.set_difficulty(diff);
 
         loop {
-            if b.get_hash()[b.get_hash().len() - diff as usize..] == *"0".repeat(diff.into()) {
+            if Blockchain::verify_difficulty(b.get_hash(), b.get_difficulty()) {
                 break;
             }
             b.increment_and_hash();

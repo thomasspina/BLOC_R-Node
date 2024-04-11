@@ -1,3 +1,3 @@
-pub mod math;
+mod math;
 pub mod secp256k1;
 

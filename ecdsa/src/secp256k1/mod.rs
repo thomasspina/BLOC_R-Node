@@ -6,7 +6,10 @@ const FP: &str = "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC
 
 pub const W: u32 = 4;
 
-// precomputes the points for the curve only once and stores it in a static ref
+/*
+    precomputes the points for the curve only once and stores it in a static ref. 
+    It's initialized on the first access and not computed again.
+*/
 mod precomputed_points {
     use super::{point::precompute_points, Curve, Point, W};
 

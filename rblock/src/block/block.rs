@@ -12,7 +12,7 @@ pub struct Block {
     timestamp: u64,
     prev_hash: String,
     nonce: u32,
-    difficulty: u8, // number of tailing zeros
+    difficulty: u32,
     merkel_root: String,
     transactions: Vec<Transaction>
 }
@@ -38,7 +38,7 @@ impl Block {
             hash: "".to_owned(),
             timestamp: functions::get_unix_time(),
             nonce: 0, 
-            difficulty: 0, 
+            difficulty: 0xffffffff, 
             prev_hash: "".to_owned(),
             merkel_root: "".to_owned(),
             transactions: vec![]
@@ -83,7 +83,7 @@ impl Block {
     }
 
     // used in case the difficulty has changed since the previous block
-    pub fn set_difficulty(&mut self, diff: u8) {
+    pub fn set_difficulty(&mut self, diff: u32) {
         self.difficulty = diff;
         self.set_hash();
     }
@@ -114,7 +114,7 @@ impl Block {
         self.transactions.clone()
     }
 
-    pub fn get_difficulty(&self) -> u8 {
+    pub fn get_difficulty(&self) -> u32 {
         self.difficulty.clone()
     }
 

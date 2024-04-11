@@ -3,8 +3,6 @@ use num_bigint::BigInt;
 use num_traits::zero;
 use crate::{math::{modular_multiplicative_inverse, modulo, bigint, calculate_wnaf}, secp256k1::FP};
 
-
-// TODO: implement Jacobi points, it removes a lot of modular multiplicative invert calls
 #[derive(Debug, Clone)]
 pub struct Point {
     pub x: BigInt,
