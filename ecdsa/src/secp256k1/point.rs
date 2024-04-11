@@ -1,6 +1,7 @@
 use core::fmt;
 use num_bigint::BigInt;
 use num_traits::zero;
+use serde::ser::{Serialize, Serializer, SerializeStruct};
 use crate::{math::{modular_multiplicative_inverse, modulo, bigint, calculate_wnaf}, secp256k1::FP};
 
 #[derive(Debug, Clone)]
@@ -16,6 +17,22 @@ pub struct Point {
 impl fmt::Display for Point {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "x{} y{}", self.x, self.y)
+    }
+}
+
+/*
+    implement trait for json serialization
+*/
+impl Serialize for Point {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer 
+    {
+        let mut state = serializer.serialize_struct("Point", 2)?;
+        // encode bigint as hex
+        state.serialize_field("x", &format!("{:x}", &self.x))?; 
+        state.serialize_field("y", &format!("{:x}", &self.y))?;
+        state.end()
     }
 }
 

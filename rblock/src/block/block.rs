@@ -1,9 +1,13 @@
 use core::fmt;
 use ecdsa::secp256k1::Point;
 use sha256::hash;
-use super::functions;
-use super::Transaction;
-use super::REWARD;
+use super::{functions, Transaction};
+use serde::ser::{Serialize, SerializeStruct};
+
+/*
+    TODO: how would i have a compressed version of the block so that I could compress
+    the blockchain
+*/ 
 
 #[derive(Clone)]
 pub struct Block {
@@ -14,9 +18,28 @@ pub struct Block {
     nonce: u32, // used for hashing to comply with difficulty
     difficulty: u32,
     merkel_root: String, // https://en.wikipedia.org/wiki/Merkle_tree
-    transactions: Vec<Transaction> // TODO: add Option with relevant methods for further compression
+    transactions: Vec<Transaction>
 }
 
+/*
+    implement for json serialization
+*/
+impl Serialize for Block {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer {
+        let mut state = serializer.serialize_struct("Block", 8)?;
+        state.serialize_field("height", &self.height)?;
+        state.serialize_field("hash", &self.hash)?;
+        state.serialize_field("timestamp", &self.timestamp)?;
+        state.serialize_field("prev_hash", &self.prev_hash)?;
+        state.serialize_field("nonce", &self.nonce)?;
+        state.serialize_field("difficulty", &self.difficulty)?;
+        state.serialize_field("merkel_root", &self.merkel_root)?;
+        state.serialize_field("transactions", &self.transactions)?;
+        state.end()
+    }
+}
 /*
     adds to_string for Block struct
 */
@@ -77,6 +100,8 @@ impl Block {
 
     /*
         rewards miner only if another reward doesn't already exist
+        pretty much obselete since you could just add it yourself when using 
+        block::new in the transactions you pass
     */
     pub fn reward_miner(&mut self, miner_address: &Point) {
         for transaction in &self.transactions {
@@ -86,7 +111,7 @@ impl Block {
             }
         }
         
-        let reward_transaction: Transaction = Transaction::reward_transaction(miner_address, REWARD);
+        let reward_transaction: Transaction = Transaction::reward_transaction(miner_address);
         
         self.transactions.push(reward_transaction);
         self.merkel_root = functions::get_merkel_root(&self.transactions);
@@ -150,14 +175,12 @@ impl Block {
         self.difficulty.clone()
     }
 
-
     /*
         returns current block's timestamp
     */
     pub fn get_timestamp(&self) -> u64 {
         self.timestamp.clone()
     }
-
 
     /*
         hashes current block's info and sets the current hash to that hash

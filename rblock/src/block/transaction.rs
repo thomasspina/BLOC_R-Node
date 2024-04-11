@@ -1,6 +1,13 @@
 use core::fmt;
 use ecdsa::secp256k1::{sign, verify_signature, Point, Signature};
 use num_bigint::BigInt;
+use serde::ser::{Serialize, SerializeStruct};
+use super::REWARD;
+
+/*
+    TODO: transactions need to be verified to make sure that the 
+    sender is not sending a bunch of money that they don't have
+*/
 
 #[derive(Clone)]
 pub struct Transaction {
@@ -23,15 +30,32 @@ impl fmt::Display for Transaction {
     }
 }
 
+/*
+    implement for json serialization
+*/
+impl Serialize for Transaction {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer 
+    {
+        let mut state = serializer.serialize_struct("Transaction", 4)?;
+        state.serialize_field("sender", &self.sender)?;
+        state.serialize_field("recipient", &self.recipient)?;
+        state.serialize_field("amount", &self.amount)?;
+        state.serialize_field("signature", &self.signature)?;
+        state.end()
+    }
+}
+
 impl Transaction { 
     /*
         generates a reward transaction for the miner that doesn't need to be signed
     */
-    pub fn reward_transaction(recipient: &Point, amount: f32) -> Self {
+    pub fn reward_transaction(recipient: &Point) -> Self {
         Transaction {
             sender: Point::identity(),
             recipient: recipient.clone(),
-            amount,
+            amount: REWARD,
             signature: Signature::get_empty()
         }
     }

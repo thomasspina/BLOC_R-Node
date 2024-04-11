@@ -2,6 +2,12 @@ use ecdsa::secp256k1::Point;
 use sha256::hash;
 use super::{Block, BLOCK_SPEED, MEAN_BLOCK_COUNT};
 
+
+/*
+    TODO: how to not have whole ass blockchain in running program memory,
+    only have last say 30 blocks or so in memory to do what you need to do.
+    The rest should be in a file somewhere
+*/
 pub struct Blockchain {
     chain: Vec<Block>
 }

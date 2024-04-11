@@ -7,6 +7,7 @@ use sha256::hash;
 use super::{Curve, Point, W};
 use crate::{math::{bigint, entropy, modular_multiplicative_inverse, modulo}, 
             secp256k1::get_curve_computed_points};
+use serde::ser::{Serialize, Serializer, SerializeStruct};
 
 #[derive(Clone)]
 pub struct Signature {
@@ -15,10 +16,32 @@ pub struct Signature {
 }
 
 impl Signature {
+    /*
+        returns an empty signature for the reward transactions
+    */
     pub fn get_empty() -> Self {
         Signature { r: zero(), s: zero() }
     }
 }
+
+
+/*
+    implement for json serialization for Signature
+*/
+impl Serialize for Signature {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer 
+    {
+        let mut state = serializer.serialize_struct("Signature", 2)?;
+        // encode bigint as hex
+        state.serialize_field("r", &format!("{:x}", &self.r))?; 
+        state.serialize_field("s", &format!("{:x}", &self.s))?;
+        state.end()
+    }
+}
+
+
 
 /*
     adds to_string for Signature struct
