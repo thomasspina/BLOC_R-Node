@@ -7,6 +7,9 @@ pub struct Blockchain {
 }
 
 impl Blockchain {
+    /*
+        creates a new blockchain with a genesis block
+    */
     pub fn new() -> Self {
         let genesis_block: Block = Block::new_genesis();
 
@@ -15,11 +18,24 @@ impl Blockchain {
         }
     }
 
+    /*
+        returns the latest block in the blockchain
+    */
     pub fn get_latest_block(&self) -> &Block {
         &self.chain[self.chain.len() - 1]
     }
 
-    // returns the difficulty after having adjusted it
+    /*
+        returns the difficulty after having adjusted it
+        difficulty works like this: a u32 is set as FFFFFFFF
+        -> each 4 bit chunk of that u32 is compared each of the last 8 4-bit chunks
+            of the hash, an F in the difficulty means that the value of the respective 
+            4-bit chuck in the hash needs to take a value between 0 and F, an E between 0 and E,
+            a D between 0 and D, and so forth until its down to just zero.
+
+            the difficulty is adjusted by slowly subtracting one the each 4-bit chunk of the difficulty u32
+            until they are all 0
+    */
     pub fn get_difficulty(blockchain: &Blockchain) -> u32 {
         // if not enough blocks in the blockchain, return latest difficulty
         let latest_diff: u32 = blockchain.get_latest_block().get_difficulty();
@@ -79,6 +95,9 @@ impl Blockchain {
         new_diff
     }
 
+    /*
+        makes block verifications before adding block to the blockchain
+    */
     pub fn add_block(&mut self, new_block: Block) {
         let latest: &Block = self.get_latest_block();
 
@@ -112,6 +131,9 @@ impl Blockchain {
         }
     }
 
+    /*
+        verifies that the 4-bit sized chunks of the hash are within the correct value range
+    */
     pub fn verify_difficulty(hash: String, difficulty: u32) -> bool {
 
         // get last 8 characters (4 bytes) of the hash to compare for difficulty rating

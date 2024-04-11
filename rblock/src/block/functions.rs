@@ -2,6 +2,9 @@ use std::{collections::VecDeque, time::{Duration, SystemTime, UNIX_EPOCH}};
 use sha256::hash;
 use super::Transaction;
 
+/*
+    returns unix time for timestamps
+*/
 pub fn get_unix_time() -> u64 {
     let current_time: SystemTime = SystemTime::now();
     let duration_since_epoch: Duration = current_time.duration_since(UNIX_EPOCH).unwrap();
@@ -9,6 +12,10 @@ pub fn get_unix_time() -> u64 {
     duration_since_epoch.as_secs()
 }
 
+/*
+    returns the merkel root of all the transactions
+    https://en.wikipedia.org/wiki/Merkle_tree
+*/
 pub fn get_merkel_root(transactions: &Vec<Transaction>) -> String {
     if transactions.len() == 0 {
         return "".to_owned();

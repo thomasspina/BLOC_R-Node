@@ -1,4 +1,6 @@
 use num_bigint::BigInt;
+use crate::math::bigint;
+
 use super::Point;
 
 #[derive(Debug, Clone)]
@@ -9,9 +11,11 @@ pub struct Curve {
 }
 
 impl Curve {
+    
+    /*
+        returns a secp256k1 curve with all the right default params
+    */
     pub fn new() -> Self {
-        let bigint = |num: &str| -> BigInt { BigInt::parse_bytes(num.as_bytes(), 16).unwrap() };
-
         Curve {
             p: bigint(super::P),
             n: bigint(super::N),

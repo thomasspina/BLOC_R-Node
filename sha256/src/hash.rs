@@ -1,9 +1,10 @@
-// https://en.wikipedia.org/wiki/SHA-2
-
 use bitvec::prelude::*;
-
 use crate::{HX, ROUND_CONSTANTS};
 
+/*
+    pretty self explanatory from the wikipedia article
+    https://en.wikipedia.org/wiki/SHA-2
+*/
 pub fn hash(data: String) -> String {
     let bit_vec = get_processed_data(data);
     let closest_512_multiple: usize = ((bit_vec.len() + 512 - 1) / 512) * 512;
@@ -70,7 +71,9 @@ pub fn hash(data: String) -> String {
 }
 
 
-// method used to generate the hash constants in lib.rs
+/*
+    method used to generate the hash constants in lib.rs
+*/ 
 pub fn get_initial_hash_values() -> [u32; 8] {
     let mut h: [u32; 8] = [0; 8];
 
@@ -82,7 +85,9 @@ pub fn get_initial_hash_values() -> [u32; 8] {
     h
 }
 
-// method used to generate the round constants in lib.rs
+/* 
+    method used to generate the round constants in lib.rs
+*/ 
 pub fn get_round_constants() -> [u32; 64] {
     let mut k: [u32; 64] = [0; 64];
     
@@ -94,10 +99,9 @@ pub fn get_round_constants() -> [u32; 64] {
     k
 }
 
-/* 
-    Helper functions below
+/*
+    checks whether a number is prime or not
 */
-
 fn is_prime(x: u32) -> bool {
     if x <= 1 {
         return false;
@@ -107,6 +111,9 @@ fn is_prime(x: u32) -> bool {
     (2..=sqrt_x).all(|i: u32| x % i != 0)
 }
 
+/*
+    gets all primes up to lim
+*/
 fn get_first_primes(lim: usize) -> Vec<u32> {
     let mut primes: Vec<u32> = Vec::new();
     let mut n: u32 = 2;
@@ -120,6 +127,9 @@ fn get_first_primes(lim: usize) -> Vec<u32> {
     return primes;
 } 
 
+/*
+    gets bytes in big-endian format from the 512 bits passed
+*/
 fn get_big_endian_words_from_512bits(slice: &BitSlice) -> [u32; 64] {
     let mut w: [u32; 64] = [0; 64];
     let mut j = 0;
@@ -134,10 +144,16 @@ fn get_big_endian_words_from_512bits(slice: &BitSlice) -> [u32; 64] {
     w
 }
 
+/*
+    returns a x right shifted and rotated n times
+*/
 fn right_rotate(x: u32, n: u32) -> u32 {
     (x >> n) | (x << (32 - n))
 }
  
+/*
+    gets the initial string as a bitvec with all the bit padding needed
+*/
 fn get_processed_data(data: String) -> BitVec {
     let mut bit_vec: BitVec = bitvec![];
 

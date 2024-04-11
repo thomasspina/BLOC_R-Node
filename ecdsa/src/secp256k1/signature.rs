@@ -20,7 +20,9 @@ impl Signature {
     }
 }
 
-// adds to_string for Signature struct
+/*
+    adds to_string for Signature struct
+*/
 impl fmt::Display for Signature {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "r{} s{}", self.r, self.s)

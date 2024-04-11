@@ -4,7 +4,7 @@ const X: &str = "79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F8179
 const Y: &str = "483ADA7726A3C4655DA4FBFC0E1108A8FD17B448A68554199C47D08FFB10D4B8";
 const FP: &str = "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2F"; // prime field for points
 
-pub const W: u32 = 4;
+pub const W: u32 = 4; // width used for precomps
 
 /*
     precomputes the points for the curve only once and stores it in a static ref. 
@@ -19,7 +19,9 @@ mod precomputed_points {
         });
 }
 
-// returns a reference to the secp256k1 precomputed points
+/*
+    returns a reference to the secp256k1 precomputed points
+*/
 pub fn get_curve_computed_points() -> &'static Vec<Point> {
     &precomputed_points::PRECOMPUTED_POINTS
 }

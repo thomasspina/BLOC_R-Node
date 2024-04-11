@@ -10,14 +10,18 @@ pub struct Point {
     // fp prime field is now in curve or a constant from mod.rs
 }
 
-// adds to_string for Point struct
+/*
+    adds to_string for Point struct
+*/
 impl fmt::Display for Point {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "x{} y{}", self.x, self.y)
     }
 }
 
-// adds == comparison
+/*
+    adds "==" comparison
+*/
 impl PartialEq for Point {
     fn eq(&self, other: &Self) -> bool {
         self.x == other.x && self.y == other.y
