@@ -5,9 +5,11 @@ use num_bigint::BigInt;
 use num_traits::zero;
 use sha256::hash;
 use super::{Curve, Point, W};
-use crate::{math::{bigint, entropy, modular_multiplicative_inverse, modulo}, 
+use crate::{math::{self, bigint, entropy, modular_multiplicative_inverse, modulo}, 
             secp256k1::get_curve_computed_points};
 use serde::ser::{Serialize, Serializer, SerializeStruct};
+use serde::de::{Deserialize, Deserializer};
+
 
 #[derive(Clone)]
 pub struct Signature {
@@ -41,6 +43,30 @@ impl Serialize for Signature {
     }
 }
 
+/* 
+    implement for json deserialization for Signature
+*/
+impl<'de> Deserialize<'de> for Signature {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de> 
+    {
+        // need to use intermediary struct with strings because 
+        // bigint is not directly serializable and desrializable
+        #[derive(serde::Deserialize)]
+        struct SignatureFields {
+            r: String,
+            s: String
+        }
+
+        let fields: SignatureFields = SignatureFields::deserialize(deserializer)?;
+
+        Ok(Signature {
+            r: math::bigint(&fields.r),
+            s: math::bigint(&fields.s)
+        })
+    }
+}
 
 
 /*

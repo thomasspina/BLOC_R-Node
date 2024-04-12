@@ -26,7 +26,7 @@ fn main() {
     let t_1 = Transaction::new(&point_1, &point_2, 4.23, &p_1);
 
     let b = Block::new(&Block::new_genesis(), &vec![t_1]);
+    b.store_block();
 
-    let k = serde_json::to_string(&b).unwrap();
-    println!("{}", k)
+    let _k = serde_json::to_string(&b).unwrap();
 }

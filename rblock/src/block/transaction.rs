@@ -7,6 +7,8 @@ use super::REWARD;
 /*
     TODO: transactions need to be verified to make sure that the 
     sender is not sending a bunch of money that they don't have
+    --> update on that: apparently that is done through a chainstate db
+        which stores all the information about every adress and the amount of coins they have
 */
 
 #[derive(Clone)]
@@ -94,7 +96,6 @@ impl Transaction {
         returns transaction signature 
     */
     pub fn get_signature(&self) -> Signature { self.signature.clone() }
-
 
     /*
         verifies the current signature

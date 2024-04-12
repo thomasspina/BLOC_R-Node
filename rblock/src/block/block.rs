@@ -1,15 +1,10 @@
 use core::fmt;
+use std::fs::{create_dir, File};
 use ecdsa::secp256k1::Point;
 use sha256::hash;
 use super::{functions, Transaction};
 use serde::ser::{Serialize, SerializeStruct};
 
-/*
-    TODO: how would i have a compressed version of the block so that I could compress
-    the blockchain
-*/ 
-
-#[derive(Clone)]
 pub struct Block {
     height: u64, // how many blocks is it above genesis
     hash: String,
@@ -18,7 +13,7 @@ pub struct Block {
     nonce: u32, // used for hashing to comply with difficulty
     difficulty: u32,
     merkel_root: String, // https://en.wikipedia.org/wiki/Merkle_tree
-    transactions: Vec<Transaction>
+    transactions: Vec<Transaction> // limit at 5000 transactions
 }
 
 /*
@@ -40,6 +35,7 @@ impl Serialize for Block {
         state.end()
     }
 }
+
 /*
     adds to_string for Block struct
 */
@@ -200,5 +196,37 @@ impl Block {
                 self.nonce,
                 self.difficulty,
                 self.merkel_root)
+    }
+
+    /*
+        method to store the block in the computer memory in a file
+    */
+    pub fn store_block(&self) {
+        let _ = create_dir("blocks_data");
+        let file = File::create(format!("blocks_data/{}.json", self.height));
+        
+        match file {
+            Ok(f) => {
+                // error will get thrown on read back, file is already created so no use
+                let _  = serde_json::to_writer(&f, &self);
+            }
+            Err(e) => { 
+                eprintln!("{e}\nBlock file could not be created");
+            }
+        }
+    }
+
+    pub fn get_block_from_file(n: u64) -> Option<Self> { // n is block height
+        let file = File::open(format!("blocks_data/{}.json", n));
+        match file {
+            Ok(f) => {
+                let block: Block = serde_json::from_reader(&f).unwrap();
+                Some(block)
+            }
+            Err(e) => { 
+                eprintln!("{e}\nBlock file could not be found");
+                None
+            }
+        }
     }
 }

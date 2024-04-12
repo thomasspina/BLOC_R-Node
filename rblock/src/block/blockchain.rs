@@ -1,11 +1,13 @@
 use ecdsa::secp256k1::Point;
 use sha256::hash;
-use super::{Block, BLOCK_SPEED, MEAN_BLOCK_COUNT};
+use crate::Transaction;
+
+use super::{Block, BLOCK_SPEED, MEAN_BLOCK_COUNT, TRANSACTION_LIMIT_PER_BLOCK};
 
 
 /*
     TODO: how to not have whole ass blockchain in running program memory,
-    only have last say 30 blocks or so in memory to do what you need to do.
+    only have most recent 10 blocks or so in memory to do what you need to do.
     The rest should be in a file somewhere
 */
 pub struct Blockchain {
@@ -106,8 +108,14 @@ impl Blockchain {
     */
     pub fn add_block(&mut self, new_block: Block) {
         let latest: &Block = self.get_latest_block();
+        let transactions: Vec<Transaction> = new_block.get_transactions();
 
-        for transaction in new_block.get_transactions() {
+        if transactions.len() > TRANSACTION_LIMIT_PER_BLOCK {
+            eprintln!("{} is too many transactions", transactions.len());
+            return;
+        }
+
+        for transaction in transactions {
             // Point::identity is miner reward
             if transaction.get_sender() != Point::identity() && !transaction.verify() {
                 eprintln!("Cannot add block, a transaction is invalid");

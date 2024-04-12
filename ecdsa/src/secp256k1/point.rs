@@ -3,6 +3,7 @@ use num_bigint::BigInt;
 use num_traits::zero;
 use serde::ser::{Serialize, Serializer, SerializeStruct};
 use crate::{math::{modular_multiplicative_inverse, modulo, bigint, calculate_wnaf}, secp256k1::FP};
+use serde::de::{Deserialize, Deserializer};
 
 #[derive(Debug, Clone)]
 pub struct Point {
@@ -33,6 +34,31 @@ impl Serialize for Point {
         state.serialize_field("x", &format!("{:x}", &self.x))?; 
         state.serialize_field("y", &format!("{:x}", &self.y))?;
         state.end()
+    }
+}
+
+/* 
+    implement for json deserialization for Signature
+*/
+impl<'de> Deserialize<'de> for Point {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de> 
+    {
+        // need to use intermediary struct with strings because 
+        // bigint is not directly serializable and desrializable
+        #[derive(serde::Deserialize)]
+        struct PointFields {
+            x: String,
+            y: String
+        }
+
+        let fields: PointFields = PointFields::deserialize(deserializer)?;
+
+        Ok(Point {
+            x: bigint(&fields.x),
+            y: bigint(&fields.y)
+        })
     }
 }
 
