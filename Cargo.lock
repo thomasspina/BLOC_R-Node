@@ -335,7 +335,6 @@ dependencies = [
  "num-bigint",
  "num-traits",
  "rblock",
- "serde_json",
  "sha256",
  "tokio",
 ]

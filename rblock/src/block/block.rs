@@ -2,9 +2,10 @@ use core::fmt;
 use std::fs::{create_dir, File};
 use ecdsa::secp256k1::Point;
 use sha256::hash;
-use super::{functions, Transaction};
-use serde::ser::{Serialize, SerializeStruct};
+use super::{functions, Transaction, TRANSACTION_LIMIT_PER_BLOCK};
+use serde::{Serialize, Deserialize};
 
+#[derive(Clone, Serialize, Deserialize)]
 pub struct Block {
     height: u64, // how many blocks is it above genesis
     hash: String,
@@ -14,26 +15,6 @@ pub struct Block {
     difficulty: u32,
     merkel_root: String, // https://en.wikipedia.org/wiki/Merkle_tree
     transactions: Vec<Transaction> // limit at 5000 transactions
-}
-
-/*
-    implement for json serialization
-*/
-impl Serialize for Block {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer {
-        let mut state = serializer.serialize_struct("Block", 8)?;
-        state.serialize_field("height", &self.height)?;
-        state.serialize_field("hash", &self.hash)?;
-        state.serialize_field("timestamp", &self.timestamp)?;
-        state.serialize_field("prev_hash", &self.prev_hash)?;
-        state.serialize_field("nonce", &self.nonce)?;
-        state.serialize_field("difficulty", &self.difficulty)?;
-        state.serialize_field("merkel_root", &self.merkel_root)?;
-        state.serialize_field("transactions", &self.transactions)?;
-        state.end()
-    }
 }
 
 /*
@@ -216,17 +197,68 @@ impl Block {
         }
     }
 
+    /*
+        method to get block out of its file
+    */
     pub fn get_block_from_file(n: u64) -> Option<Self> { // n is block height
         let file = File::open(format!("blocks_data/{}.json", n));
+
+        // TODO: if not found, then send out request for it (if it's smaller than your biggest)
         match file {
             Ok(f) => {
                 let block: Block = serde_json::from_reader(&f).unwrap();
                 Some(block)
             }
             Err(e) => { 
-                eprintln!("{e}\nBlock file could not be found");
+                eprintln!("{e}\nBlock file could not be opened");
                 None
             }
         }
+    }
+
+    /*
+        verifies that the 4-bit sized chunks of the hash are within the correct value range
+    */
+    pub fn verify_difficulty(hash: String, difficulty: u32) -> bool {
+
+        // get last 8 characters (4 bytes) of the hash to compare for difficulty rating
+        let hash_u32: u32 = u32::from_str_radix(&hash[hash.len() - 8..], 16).unwrap();
+
+        // half-byte per half-byte comparison
+        for i in (0..=28).step_by(4) {
+            let difficulty_bits: u32 = (difficulty >> i) & 0xf;
+            let hash_bits: u32 = (hash_u32 >> i) & 0xf;
+
+            if hash_bits > difficulty_bits {
+                return false;
+            }
+        }
+
+        true
+    }
+
+    /*
+        checks every transaction to make sure  that its good
+    */
+    pub fn verify_transactions(&self) -> bool {
+        if self.transactions.len() > TRANSACTION_LIMIT_PER_BLOCK {
+            eprintln!("{} is too many transactions", self.transactions.len());
+            return false;
+        }
+
+        for transaction in &self.transactions {
+            // Point::identity is miner reward sender
+            if transaction.get_sender() != Point::identity() && !transaction.verify() {
+                eprintln!("A transaction is invalid");
+                eprintln!("{}", transaction);
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    pub fn verify_hash(&self) -> bool {
+        self.get_hash() == hash(self.get_message())
     }
 }

@@ -5,8 +5,7 @@
 
 use ecdsa::secp256k1::{get_curve_computed_points, Curve, W};
 use num_bigint::BigInt;
-use rblock::{Block, Transaction};
-use serde_json;
+use rblock::{Block, Blockchain, Transaction};
 
 fn bigint(num: &str) -> BigInt {
     BigInt::parse_bytes(num.as_bytes(), 16).unwrap()
@@ -25,8 +24,23 @@ fn main() {
 
     let t_1 = Transaction::new(&point_1, &point_2, 4.23, &p_1);
 
-    let b = Block::new(&Block::new_genesis(), &vec![t_1]);
-    b.store_block();
+    let transactions = &vec![t_1];
+    let mut bc = Blockchain::new();
+    for _ in 0..10 {
+        let mut b: Block = Block::new(bc.get_latest_block(), transactions);
+        loop {
+            b.set_difficulty(Blockchain::get_new_block_difficulty(&bc, &b));
+            if Block::verify_difficulty(b.get_hash(), b.get_difficulty()) {
+                break;
+            }
+            b.increment_and_hash();
+        }
+        bc.add_block(b);
+    } 
 
-    let _k = serde_json::to_string(&b).unwrap();
+    //bc.store_blockchain();
+
+    let _bc = Blockchain::get_blockchain_from_files(Some(5)).unwrap();
+
+
 }

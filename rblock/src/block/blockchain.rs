@@ -1,15 +1,6 @@
-use ecdsa::secp256k1::Point;
-use sha256::hash;
-use crate::Transaction;
+use std::{cmp::max, fs};
+use super::{Block, BLOCK_SPEED};
 
-use super::{Block, BLOCK_SPEED, MEAN_BLOCK_COUNT, TRANSACTION_LIMIT_PER_BLOCK};
-
-
-/*
-    TODO: how to not have whole ass blockchain in running program memory,
-    only have most recent 10 blocks or so in memory to do what you need to do.
-    The rest should be in a file somewhere
-*/
 pub struct Blockchain {
     chain: Vec<Block>
 }
@@ -44,29 +35,19 @@ impl Blockchain {
             the difficulty is adjusted by slowly subtracting one the each 4-bit chunk of the difficulty u32
             until they are all 0
     */
-    pub fn get_difficulty(blockchain: &Blockchain) -> u32 {
+    pub fn get_new_block_difficulty(blockchain: &Blockchain, comp_block: &Block) -> u32 {
         // if not enough blocks in the blockchain, return latest difficulty
         let latest_diff: u32 = blockchain.get_latest_block().get_difficulty();
-        if blockchain.chain.len() < MEAN_BLOCK_COUNT as usize {
-            return latest_diff;
-        }
         
-        let blocks: &[Block] = &blockchain.chain[blockchain.chain.len() - MEAN_BLOCK_COUNT as usize..];
+        let block: &Block = blockchain.get_latest_block();
         // get the difference between each block
-        let diffs: Vec<u64> = blocks.iter()
-                            .zip(blocks.iter().skip(1))
-                            .map(|(b1, b2)| {
-                                let t1 = b1.get_timestamp();
-                                let t2 = b2.get_timestamp();
-                                t2 - t1
-                            })
-                            .collect();
+        let diff: u64 = comp_block.get_timestamp() - block.get_timestamp();
         
         // init new diff
         let mut new_diff: u32 = latest_diff;
 
         // compare mean to desired speed
-        if (diffs.iter().sum::<u64>() / (MEAN_BLOCK_COUNT - 1) as u64) >= BLOCK_SPEED {
+        if diff >= BLOCK_SPEED {
             // reduce difficulty by increasing range of values per 4bit chuck
             for i in (0..=28).rev().step_by(4) {
                 let mut bits: u32 = (latest_diff >> i) & 0xf;
@@ -108,61 +89,99 @@ impl Blockchain {
     */
     pub fn add_block(&mut self, new_block: Block) {
         let latest: &Block = self.get_latest_block();
-        let transactions: Vec<Transaction> = new_block.get_transactions();
+        let supposed_difficulty: u32 = Blockchain::get_new_block_difficulty(&self, &new_block);
 
-        if transactions.len() > TRANSACTION_LIMIT_PER_BLOCK {
-            eprintln!("{} is too many transactions", transactions.len());
+        if !new_block.verify_transactions() {
+            // error messages are already in the block method
             return;
         }
-
-        for transaction in transactions {
-            // Point::identity is miner reward
-            if transaction.get_sender() != Point::identity() && !transaction.verify() {
-                eprintln!("Cannot add block, a transaction is invalid");
-                eprintln!("{}", transaction);
-                return;
-            }
-        }
-
-        let new_hash: String = new_block.get_hash();
-        let supposed_difficulty: u32 = Blockchain::get_difficulty(&self);
 
         if latest.get_hash() != new_block.get_prev_hash() {
             eprintln!("The new block is not linked to the previous block");
 
-        } else if new_hash != hash(new_block.get_message()) {
+        } else if !new_block.verify_hash() {
             eprintln!("The new block's hash and its data do not fit");
 
         } else if new_block.get_difficulty() != supposed_difficulty {
             eprintln!("The new block's difficulty rating is supposed to be of {}", supposed_difficulty);
  
-        } else if !Blockchain::verify_difficulty(new_block.get_hash(), supposed_difficulty) {
+        } else if !Block::verify_difficulty(new_block.get_hash(), supposed_difficulty) {
             eprintln!("The new block's hash does not fit with the difficulty rating of {}", supposed_difficulty);
 
         } else {
             self.chain.push(new_block);
-
         }
     }
+
+    pub fn store_blockchain(&self) {
+        for block in &self.chain {
+            block.store_block();
+        }
+    }
+
 
     /*
-        verifies that the 4-bit sized chunks of the hash are within the correct value range
+        returns a usable blockchain from the n latest blocks in memory
     */
-    pub fn verify_difficulty(hash: String, difficulty: u32) -> bool {
+    pub fn get_blockchain_from_files(n: Option<u8>) -> Option<Self> { // n is the number of blocks you want loaded in memory at once
+        let n: u8 = n.unwrap_or(25);
+        let mut max_height: u64 = 0;
 
-        // get last 8 characters (4 bytes) of the hash to compare for difficulty rating
-        let hash_u32: u32 = u32::from_str_radix(&hash[hash.len() - 8..], 16).unwrap();
-
-        // half-byte per half-byte comparison
-        for i in (0..=28).step_by(4) {
-            let difficulty_bits: u32 = (difficulty >> i) & 0xf;
-            let hash_bits: u32 = (hash_u32 >> i) & 0xf;
-
-            if hash_bits > difficulty_bits {
-                return false;
+        // get largest file number in memory
+        if let Ok(files) = fs::read_dir("blocks_data") {
+            for file in files.filter_map(Result::ok) {
+                if let Some(name) = file.path().file_name() {
+                    if let Some(name_str) = name.to_str() {
+                        // -5 for .json tail of every file
+                        max_height = max(name_str[..name_str.len()-5].parse().unwrap(), max_height);
+                    }
+                }
             }
+        }   
+        
+        // verify that starting block exists theoretically
+        if max_height < n as u64 {
+            eprintln!("Starting block is smaller than genesis!");
+            return None;
         }
 
-        true
+        let mut blockchain: Blockchain = Blockchain {
+            chain: vec![]
+        };
+
+        // add initial block
+        match Block::get_block_from_file(max_height - n as u64) {
+            Some(block) => {
+                // initial checks on first block
+                if block.verify_transactions() && block.verify_hash() && Block::verify_difficulty(block.get_hash(), block.get_difficulty()) {
+                    blockchain.chain.push(block);
+                } else {
+                    eprintln!("Starting block is invalid.");
+                    return None;
+                }
+            },
+            None => {
+                eprintln!("Starting block could not be found.");
+                return None;
+                // TODO: make a network call to see who has that block
+            }
+        };
+
+        // repeat above match for every other block to load into memory
+        for i in (max_height - n as u64 + 1)..max_height + 1 {
+            match Block::get_block_from_file(i) {
+                Some(block) => {
+                    blockchain.add_block(block);
+                },
+                None => {
+                    eprintln!("block of height {} could not be found.", i);
+                    return None;
+                    // TODO: make a network call to see who has that block
+                }
+            };
+        }
+
+        Some(blockchain)
     }
+
 }

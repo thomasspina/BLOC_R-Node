@@ -1,7 +1,7 @@
 use core::fmt;
 use ecdsa::secp256k1::{sign, verify_signature, Point, Signature};
 use num_bigint::BigInt;
-use serde::ser::{Serialize, SerializeStruct};
+use serde::{Deserialize, Serialize};
 use super::REWARD;
 
 /*
@@ -11,7 +11,7 @@ use super::REWARD;
         which stores all the information about every adress and the amount of coins they have
 */
 
-#[derive(Clone)]
+#[derive(Clone, Deserialize, Serialize)]
 pub struct Transaction {
     sender: Point,
     recipient: Point,
@@ -29,23 +29,6 @@ impl fmt::Display for Transaction {
             self.recipient,
             self.amount,
             self.signature)
-    }
-}
-
-/*
-    implement for json serialization
-*/
-impl Serialize for Transaction {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer 
-    {
-        let mut state = serializer.serialize_struct("Transaction", 4)?;
-        state.serialize_field("sender", &self.sender)?;
-        state.serialize_field("recipient", &self.recipient)?;
-        state.serialize_field("amount", &self.amount)?;
-        state.serialize_field("signature", &self.signature)?;
-        state.end()
     }
 }
 
