@@ -22,7 +22,7 @@ mod precomputed_points {
 /*
     returns a reference to the secp256k1 precomputed points
 */
-pub fn get_curve_computed_points() -> &'static Vec<Point> {
+pub fn get_curve_precomputed_points() -> &'static Vec<Point> {
     &precomputed_points::PRECOMPUTED_POINTS
 }
 

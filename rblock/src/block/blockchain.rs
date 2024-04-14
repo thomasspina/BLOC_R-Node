@@ -1,4 +1,3 @@
-use std::{cmp::max, fs};
 use super::{Block, BLOCK_SPEED};
 
 pub struct Blockchain {
@@ -112,76 +111,4 @@ impl Blockchain {
             self.chain.push(new_block);
         }
     }
-
-    pub fn store_blockchain(&self) {
-        for block in &self.chain {
-            block.store_block();
-        }
-    }
-
-
-    /*
-        returns a usable blockchain from the n latest blocks in memory
-    */
-    pub fn get_blockchain_from_files(n: Option<u8>) -> Option<Self> { // n is the number of blocks you want loaded in memory at once
-        let n: u8 = n.unwrap_or(25);
-        let mut max_height: u64 = 0;
-
-        // get largest file number in memory
-        if let Ok(files) = fs::read_dir("blocks_data") {
-            for file in files.filter_map(Result::ok) {
-                if let Some(name) = file.path().file_name() {
-                    if let Some(name_str) = name.to_str() {
-                        // -5 for .json tail of every file
-                        max_height = max(name_str[..name_str.len()-5].parse().unwrap(), max_height);
-                    }
-                }
-            }
-        }   
-        
-        // verify that starting block exists theoretically
-        if max_height < n as u64 {
-            eprintln!("Starting block is smaller than genesis!");
-            return None;
-        }
-
-        let mut blockchain: Blockchain = Blockchain {
-            chain: vec![]
-        };
-
-        // add initial block
-        match Block::get_block_from_file(max_height - n as u64) {
-            Some(block) => {
-                // initial checks on first block
-                if block.verify_transactions() && block.verify_hash() && Block::verify_difficulty(block.get_hash(), block.get_difficulty()) {
-                    blockchain.chain.push(block);
-                } else {
-                    eprintln!("Starting block is invalid.");
-                    return None;
-                }
-            },
-            None => {
-                eprintln!("Starting block could not be found.");
-                return None;
-                // TODO: make a network call to see who has that block
-            }
-        };
-
-        // repeat above match for every other block to load into memory
-        for i in (max_height - n as u64 + 1)..max_height + 1 {
-            match Block::get_block_from_file(i) {
-                Some(block) => {
-                    blockchain.add_block(block);
-                },
-                None => {
-                    eprintln!("block of height {} could not be found.", i);
-                    return None;
-                    // TODO: make a network call to see who has that block
-                }
-            };
-        }
-
-        Some(blockchain)
-    }
-
 }

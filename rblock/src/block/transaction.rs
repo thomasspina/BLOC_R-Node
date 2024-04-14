@@ -4,13 +4,6 @@ use num_bigint::BigInt;
 use serde::{Deserialize, Serialize};
 use super::REWARD;
 
-/*
-    TODO: transactions need to be verified to make sure that the 
-    sender is not sending a bunch of money that they don't have
-    --> update on that: apparently that is done through a chainstate db
-        which stores all the information about every adress and the amount of coins they have
-*/
-
 #[derive(Clone, Deserialize, Serialize)]
 pub struct Transaction {
     sender: Point,

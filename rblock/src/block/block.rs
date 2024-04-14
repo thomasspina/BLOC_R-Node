@@ -1,5 +1,4 @@
 use core::fmt;
-use std::fs::{create_dir, File};
 use ecdsa::secp256k1::Point;
 use sha256::hash;
 use super::{functions, Transaction, TRANSACTION_LIMIT_PER_BLOCK};
@@ -160,6 +159,13 @@ impl Block {
     }
 
     /*
+        returns current block's height
+    */
+    pub fn get_height(&self) -> u64 {
+        self.height.clone()
+    }
+ 
+    /*
         hashes current block's info and sets the current hash to that hash
     */
     fn set_hash(&mut self) {
@@ -177,43 +183,6 @@ impl Block {
                 self.nonce,
                 self.difficulty,
                 self.merkel_root)
-    }
-
-    /*
-        method to store the block in the computer memory in a file
-    */
-    pub fn store_block(&self) {
-        let _ = create_dir("blocks_data");
-        let file = File::create(format!("blocks_data/{}.json", self.height));
-        
-        match file {
-            Ok(f) => {
-                // error will get thrown on read back, file is already created so no use
-                let _  = serde_json::to_writer(&f, &self);
-            }
-            Err(e) => { 
-                eprintln!("{e}\nBlock file could not be created");
-            }
-        }
-    }
-
-    /*
-        method to get block out of its file
-    */
-    pub fn get_block_from_file(n: u64) -> Option<Self> { // n is block height
-        let file = File::open(format!("blocks_data/{}.json", n));
-
-        // TODO: if not found, then send out request for it (if it's smaller than your biggest)
-        match file {
-            Ok(f) => {
-                let block: Block = serde_json::from_reader(&f).unwrap();
-                Some(block)
-            }
-            Err(e) => { 
-                eprintln!("{e}\nBlock file could not be opened");
-                None
-            }
-        }
     }
 
     /*
