@@ -1,7 +1,7 @@
 use std::io::{self, ErrorKind};
 use dirs::home_dir;
 use ecdsa::secp256k1::Point;
-use rblock::Block;
+use rblock::{Block, Transaction};
 use rusty_leveldb::{Options, Status, DB};
 use byteorder::{LittleEndian, ReadBytesExt};
 use std::io::Cursor;
@@ -63,7 +63,7 @@ impl BlocksDB {
 
                     // update db with new latest block info
                     self.update_latest_block(block)?;
-                    self.update_chainstate(block)?;
+                    self.update_chainstate(block.get_transactions())?;
                 }
 
                 Ok(())
@@ -72,13 +72,10 @@ impl BlocksDB {
     }
 
     /// Updates the chainstate with the transactions of a given block.
-    /// Multiple checks should be made before using this method.
-    /// 
-    /// Method is not safe as it doesn't check if the sender has enough balance to send the amount.
-    /// It simply iterates through the transactions and once an error is encountered, it panics and stops without reverting changes.
+    /// Multiple checks should be made before using this method. Method is private so as to not invalidate the data in the db
     /// 
     /// # Arguments
-    /// * `block` - A &Block which specifies a reference to the block from which the transactions need to be updated
+    /// * `transactions` - A Vec<Transaction> which specifies the transactions to update the chainstate with
     /// 
     /// # Modifications
     /// This method changes often multiple addresses' balances using put on the db object.
@@ -86,19 +83,47 @@ impl BlocksDB {
     /// # Returns
     /// An Result<(), Status> which is Ok(()) if the chainstate was successfully updated, or an error if it was not.
     ///
-    fn update_chainstate(&mut self, block: &Block) -> Result<(), Status> {
-        for transaction in block.get_transactions() {
+    fn update_chainstate(&mut self, transactions: Vec<Transaction>) -> Result<(), Status> {
+        let mut recorded_transactions: Vec<Transaction> = vec![];
+
+        for transaction in transactions {
             let sender: Point = transaction.get_sender();
             let recipient: Point = transaction.get_recipient();
 
-            // if sender doesn't exist, then panic since we can't have a transaction without a sender
-            let mod_sender_balance: f32 = self.get_balance(&sender).unwrap() - transaction.get_amount();
+            // get original balances
+            let sender_balance: Option<f32> = self.get_balance(&sender);
+            
+            // If no sender cannot send money. If sender doesn't have all money, then there is a problem and cannot send money
+            if sender_balance.is_none() || (sender_balance.is_some() && sender_balance.unwrap() < transaction.get_amount()) {
+
+                self.reverse_chainstate(recorded_transactions).unwrap(); // panic if cannot reverse transactions
+
+                // status code invalid data as data is most likely invalid
+                return Err(Status::new(rusty_leveldb::StatusCode::InvalidData, "Chainstate information could not be updated."));
+            }
+            
+            let mod_sender_balance: f32 = sender_balance.unwrap() - transaction.get_amount();
 
             let mod_recipient_balance: f32 = self.get_balance(&recipient).unwrap_or(0.0) + transaction.get_amount();
 
-            // update both modified balances
-            self.db.put(&bincode::serialize(&sender).unwrap(), &mod_sender_balance.to_le_bytes())?;
-            self.db.put(&bincode::serialize(&recipient).unwrap(), &mod_recipient_balance.to_le_bytes())?;
+            // update both modified balances, reverse changes if error in update
+            match self.db.put(&bincode::serialize(&sender).unwrap(), &mod_sender_balance.to_le_bytes()) {
+                Ok(_) => {},
+                Err(e) => {
+                    self.reverse_chainstate(recorded_transactions).unwrap(); // panic if cannot reverse transactions
+                    return Err(e);
+                }
+            }
+
+            match self.db.put(&bincode::serialize(&recipient).unwrap(), &mod_recipient_balance.to_le_bytes()) {
+                Ok(_) => {},
+                Err(e) => {
+                    self.reverse_chainstate(recorded_transactions).unwrap(); // panic if cannot reverse transactions
+                    return Err(e);
+                }
+            }
+
+            recorded_transactions.push(transaction);
         }
 
         Ok(())
@@ -121,14 +146,14 @@ impl BlocksDB {
         Ok(())
     }
 
-    /// Reverses the balance changes from the transactions of a given block.
+    /// Reverts the chainstate with the transactions of a given block. 
     /// Multiple checks should be made before using this method.
     /// 
-    /// Method is not safe as it doesn't check if the ricipient has enough balance to revert the amount.
+    /// Method is not safe as it doesn't check if the recipient has enough balance to revert the amount.
     /// It simply iterates through the transactions and once an error is encountered, it panics and stops without reverting changes.
     /// 
     /// # Arguments
-    /// * `block` - A &Block which specifies a reference to the block from which the transactions need to be reversed
+    /// * `transactions` - A Vec<Transaction> which specifies the transactions to revert the chainstate with
     /// 
     /// # Modifications
     /// This method changes often multiple addresses' balances using put on the db object.
@@ -136,13 +161,12 @@ impl BlocksDB {
     /// # Returns
     /// An Result<(), Status> which is Ok(()) if the chainstate was successfully reversed, or an error if it was not.
     ///
-    fn reverse_chainstate(&mut self, block: &Block) -> Result<(), Status> {
-        for transaction in block.get_transactions() {
+    fn reverse_chainstate(&mut self, transactions: Vec<Transaction>) -> Result<(), Status> {
+        for transaction in transactions {
             let sender: Point = transaction.get_sender();
             let recipient: Point = transaction.get_recipient();
 
             let mod_sender_balance: f32 = self.get_balance(&sender).unwrap() + transaction.get_amount();
-
             let mod_recipient_balance: f32 = self.get_balance(&recipient).unwrap() - transaction.get_amount();
 
             // update both modified balances
@@ -251,11 +275,9 @@ impl BlocksDB {
             let new_latest_block: Block = self.get_block(height - 1).unwrap(); // panic if no other block
             self.update_latest_block(&new_latest_block)?;
 
-            self.reverse_chainstate(&latest_block)?; // No transactions in genesis, so no harm done
+            self.reverse_chainstate(latest_block.get_transactions())?; // No transactions in genesis, so no harm done
         }
         
         Ok(())
     }
-
-
 }
