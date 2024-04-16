@@ -10,8 +10,8 @@
     // once that app is built you could just deploy a version of it online for people to see and so that 
     // a node is always active
 
-mod db;
-use db::BlocksDB;
+mod db_api;
+use db_api::BlocksDB;
 
 use ecdsa::secp256k1::{get_curve_precomputed_points, Curve, W};
 use num_bigint::BigInt;
@@ -36,14 +36,12 @@ fn main() {
     let transactions = &vec![t_1];
     let b: Block = Block::new(&Block::new_genesis(), transactions);
 
-    let mut db = BlocksDB::start_db().unwrap();
+    let mut db: BlocksDB = BlocksDB::start_db().unwrap();
 
-    let b2: Block = Block::new(&Block::new_genesis(), &vec![]);
+    db.put_block(&b).unwrap();
+    
+    let b2: Block = db.get_block(b.get_height()).unwrap();
 
-    db.put_block(&b);
-
-    let c: Block = db.read_block(b.get_height()).unwrap();
-
-    println!("{}\n\n{}", b2, c);
+    println!("{}\n\n{}", b, b2);
 
 }
