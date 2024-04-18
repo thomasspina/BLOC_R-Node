@@ -4,25 +4,40 @@ use rand::rngs::ThreadRng;
 use num_traits::{zero, one};
 use num_traits::ToPrimitive;
 
-/*
-    Helper function to return a hexadecimal string as a bigint
-*/
+/// Helper functions for BigInt operations
+/// 
+/// # Arguments
+/// * `num` - A string slice that holds the number to be converted to BigInt
+/// 
+/// # Returns
+/// A BigInt representation of the number
+/// 
 pub fn bigint(num: &str) -> BigInt {
     BigInt::parse_bytes(num.as_bytes(), 16).unwrap()
 }
 
-/*
-    Helper function to handle negative numbers with modulus operations.
-    Ex: -21 % 4 = -1 but in modular arithmetics -21 mod 4 = 3 
-*/
+/// Helper function to get a modulo in the euclidean sense
+/// 
+/// # Arguments
+/// * `x` - A reference to a BigInt the number to be modded
+/// * `m` - A reference to a BigInt being the modulo
+/// 
+/// # Returns
+/// A BigInt representation of the modulo
+/// 
 pub fn modulo(x: &BigInt, m: &BigInt) -> BigInt {
     ((x % m) + m) % m
 }
 
-/*
-    Converts an integer n to a w - width NAF representation for 
-    less additions during multiplication algo.
-*/
+/// Helper function to calculate the w-ary non-adjacent form of a number
+/// 
+/// # Arguments
+/// * `w` - A u32 that is the window size
+/// * `n` - A BigInt that is the number to be converted to wnaf
+/// 
+/// # Returns
+/// A Vec<i8> representation of the wnaf
+/// 
 pub fn calculate_wnaf(w: u32, mut n: BigInt) -> Vec<i8> {
     let mut wnaf: Vec<i8> = Vec::new();
 
@@ -30,9 +45,11 @@ pub fn calculate_wnaf(w: u32, mut n: BigInt) -> Vec<i8> {
     let mut i: usize = 0;
 
     while n >= one() {
+        // if n is odd
         if &n & &one() == one() {
             let remainder: BigInt = modulo(&n, &modulus);
 
+            // if remainder is greater than 2^(w-1) - 1
             if remainder > BigInt::from((1 << (w - 1)) - 1) {
                 wnaf.push((remainder - &modulus).to_i8().unwrap());
             } else {
@@ -51,9 +68,11 @@ pub fn calculate_wnaf(w: u32, mut n: BigInt) -> Vec<i8> {
     wnaf
 }
 
-/*
-    Helper function to get a random 256bit long BigInt that is cryptographically secure.
-*/
+/// Helper function to get a truly random number
+/// 
+/// # Returns
+/// A BigInt representation of the random number
+/// 
 pub fn entropy() -> BigInt {
     let mut rng: ThreadRng = thread_rng();
 
@@ -64,19 +83,26 @@ pub fn entropy() -> BigInt {
     BigInt::from_bytes_be(Sign::Plus, &bytes)
 }      
 
-/*
-    Helper function to get the modular multiplicative inverse. 
-    This function uses the extended euclidean algorithm.
-    Ex: (5 * x) mod 7 = 1 what is x. x here is 3
-*/
+/// Helper function to calculate the modular multiplicative inverse of a number.
+/// This function uses the extended euclidean algorithm to calculate the modular multiplicative inverse.
+/// 
+/// # Arguments
+/// * `n` - A reference to a BigInt that is the number to be modded
+/// * `b` - A BigInt that is the modulo
+/// * `t1` - An optional BigInt that is the first value in the calculation (default is 0)
+/// * `t2` - An optional BigInt that is the second value in the calculation (default is 1)
+/// 
+/// # Returns
+/// A BigInt representation of the modular multiplicative inverse
+/// 
 pub fn modular_multiplicative_inverse(
     n: &BigInt,
     mut b: BigInt,
     t1: Option<BigInt>,
     t2: Option<BigInt>,
 ) -> BigInt {
-    let t1 = t1.unwrap_or(zero()); // set default value for t1
-    let t2 = t2.unwrap_or(one());// set default value for t2
+    let t1: BigInt = t1.unwrap_or(zero()); // set default value for t1
+    let t2: BigInt = t2.unwrap_or(one());// set default value for t2
 
     if n == &zero() || b == zero() {
         return zero();
@@ -86,10 +112,10 @@ pub fn modular_multiplicative_inverse(
         b = modulo(&b, n);
     }
 
-    let q = n / &b;
-    let r = modulo(n, &b);
+    let q: BigInt = n / &b;
+    let r: BigInt = modulo(n, &b);
 
-    let t3 = t1 - &q * &t2;
+    let t3: BigInt = t1 - &q * &t2;
 
     if r == zero() && b != one() {
         return zero();

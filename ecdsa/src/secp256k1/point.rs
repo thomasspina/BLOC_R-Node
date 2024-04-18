@@ -12,24 +12,25 @@ pub struct Point {
     // fp prime field is now in curve or a constant from mod.rs
 }
 
-/*
-    adds to_string for Point struct
-*/
+/// implement display for Point
+/// displays the point as x_y
 impl fmt::Display for Point {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "x{}_y{}", self.x, self.y)
     }
 }
 
-/*
-    implement trait for json serialization
-*/
+/// implement for serialization for Point
+/// manual implementation needed because BigInt is not directly serializable
+/// implementation is done by serializing the bigint as a hex string
 impl Serialize for Point {
+
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer 
     {
         let mut state = serializer.serialize_struct("Point", 2)?;
+
         // encode bigint as hex
         state.serialize_field("x", &format!("{:x}", &self.x))?; 
         state.serialize_field("y", &format!("{:x}", &self.y))?;
@@ -37,9 +38,9 @@ impl Serialize for Point {
     }
 }
 
-/* 
-    implement for json deserialization for Signature
-*/
+/// implement for deserialization for Point
+/// manual implementation needed because BigInt is not directly deserializable
+/// implementation is done by deserializing the hex string as a bigint
 impl<'de> Deserialize<'de> for Point {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
@@ -62,9 +63,8 @@ impl<'de> Deserialize<'de> for Point {
     }
 }
 
-/*
-    adds "==" comparison
-*/
+/// implement for PartialEq for Point
+/// enables == and != for Point
 impl PartialEq for Point {
     fn eq(&self, other: &Self) -> bool {
         self.x == other.x && self.y == other.y
@@ -72,12 +72,20 @@ impl PartialEq for Point {
 }
 
 impl Point {
-    /*
-        returns the point multiplied by n using non-adjacent scalar representation.
-        https://en.wikipedia.org/wiki/Non-adjacent_form
-
-        it allows for much less additions and doubling, especially using pre comps
-    */
+    /// multiply implementation multiplies a point by a number using the wnaf method
+    /// returns the point multiplied by n using non-adjacent scalar representation.
+    /// https://en.wikipedia.org/wiki/Non-adjacent_form
+    ///
+    /// it allows for much less additions and doubling, especially using pre comps
+    /// 
+    /// # Arguments
+    /// * `n` - A BigInt that is the number to multiply the point by
+    /// * `width` - A u32 that is the width of the window
+    /// * `pre_comp` - A reference to a Vec<Point> that is the precomputed points
+    /// 
+    /// # Returns
+    /// A Point that is the result of the multiplication
+    /// 
     pub fn multiply(self, n: BigInt, width: u32, pre_comp: &std::vec::Vec<Point>) -> Point {
         let wnaf: Vec<i8> = calculate_wnaf(width, n);
 
@@ -111,9 +119,7 @@ impl Point {
         q
     } 
 
-    /*
-        Returns the identity element of the group
-    */
+    /// returns the identity point (0, 0)
     pub fn identity() -> Self {
         Point {
             x: zero(),
@@ -121,16 +127,18 @@ impl Point {
         }
     }
 
-    /*
-        double implementation doubles a point ie, it adds the point to itself (mod fp) using these formulas
-        L = [ (3*X^2) / 2*Y ] mod P
-        Xr = [ L^2 - 2*X ] mod P
-        Yr = [ L*(X - Xr) - Y ] mod P
-    */
+    /// doubles a point ie, it adds the point to itself (mod fp) using these formulas
+    /// L = [ (3*X^2) / 2*Y ] mod P
+    /// Xr = [ L^2 - 2*X ] mod P
+    /// Yr = [ L*(X - Xr) - Y ] mod P
+    /// 
+    /// # Returns
+    /// A Point that is the result of the doubling
+    /// 
     fn double(&self) -> Point {
-        // we use the modular multiplicative inverse to not have to divide
         let fp: &BigInt = &bigint(FP);
 
+        // we use the modular multiplicative inverse to not have to divide
         let lambda: BigInt = modulo(&(3 * &self.x * &self.x 
             * modular_multiplicative_inverse(fp, 2 * &self.y, None, None)), 
             fp);
@@ -143,12 +151,17 @@ impl Point {
         }
     }
 
-    /*
-        add implementation adds a point to another using following formulas
-        L = [ (Y' - Y) / (X' - X) ] mod P
-        Xr = [ L^2 - X - X' ] mod P
-        Yr = [ L*(X - Xr) - Y ] mod P
-    */
+    /// add implementation adds a point to another using following formulas
+    /// L = [ (Y' - Y) / (X' - X) ] mod P
+    /// Xr = [ L^2 - X - X' ] mod P
+    /// Yr = [ L*(X - Xr) - Y ] mod P
+    /// 
+    /// # Arguments
+    /// * `other` - A reference to a Point that is the point to add
+    /// 
+    /// # Returns
+    /// A Point that is the result of the addition
+    /// 
     pub fn add(self, other: &Point) -> Point {
         if self.x == other.x && self.y == (&other.y * -1) { // check P2 = -P1, vertical line, thus P1 + P2 = 0
             Point::identity()
@@ -175,10 +188,16 @@ impl Point {
     }
 }
 
-/*
-    returns a list of precomputed points of width w from Point Q
-*/
-pub fn precompute_points(mut q: Point, w: u32) -> std::vec::Vec<Point> {
+/// precomputes the points for the sec256k1 curve at the given point
+/// 
+/// # Arguments
+/// * `q` - A Point that is the point from which to precompute
+/// * `w` - A u32 that is the width of the window
+/// 
+/// # Returns
+/// A Vec<Point> that is the precomputed points
+/// 
+pub fn precompute_points(mut q: Point, w: u32) -> Vec<Point> {
     let mut p: Vec<Point> = vec![q.clone()];
 
     q = q.double();

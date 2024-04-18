@@ -1,16 +1,16 @@
-// for more info on the maths here: https://cryptobook.nakov.com/digital-signatures/ecdsa-sign-verify-messages
+//! for more info on the maths here: https://cryptobook.nakov.com/digital-signatures/ecdsa-sign-verify-messages
 
 use core::fmt;
 use num_bigint::BigInt;
 use num_traits::zero;
 use sha256::hash;
-use super::{Curve, Point, W};
+use super::{Secp256k1, Point, W};
 use crate::{math::{self, bigint, entropy, modular_multiplicative_inverse, modulo}, 
             secp256k1::get_curve_precomputed_points};
 use serde::ser::{Serialize, Serializer, SerializeStruct};
 use serde::de::{Deserialize, Deserializer};
 
-
+/// Signature struct that holds the r and sigma values of a digital signature
 #[derive(Clone)]
 pub struct Signature {
     r: BigInt,
@@ -18,24 +18,28 @@ pub struct Signature {
 }
 
 impl Signature {
-    /*
-        returns an empty signature for the reward transactions
-    */
+
+    /// returns an empty signature (empty meaning with r and s as 0)
+    /// 
+    /// # Returns
+    /// an empty signature struct 
+    /// 
     pub fn get_empty() -> Self {
         Signature { r: zero(), s: zero() }
     }
 }
 
-
-/*
-    implement for json serialization for Signature
-*/
+/// implement for serialization for Signature
+/// manual implementation needed because BigInt is not directly serializable
+/// implementation is done by serializing the bigint as a hex string
 impl Serialize for Signature {
+
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer 
     {
         let mut state = serializer.serialize_struct("Signature", 2)?;
+
         // encode bigint as hex
         state.serialize_field("r", &format!("{:x}", &self.r))?; 
         state.serialize_field("s", &format!("{:x}", &self.s))?;
@@ -43,10 +47,11 @@ impl Serialize for Signature {
     }
 }
 
-/* 
-    implement for json deserialization for Signature
-*/
+/// implement for deserialization for Signature
+/// manual implementation needed because BigInt is not directly deserializable
+/// implementation is done by deserializing the hex string as a bigint
 impl<'de> Deserialize<'de> for Signature {
+
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de> 
@@ -69,22 +74,26 @@ impl<'de> Deserialize<'de> for Signature {
 }
 
 
-/*
-    adds to_string for Signature struct
-*/
+/// implement for display for Signature
+/// this is done to make it easier to print the signature
 impl fmt::Display for Signature {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "r{} s{}", self.r, self.s)
+        write!(f, "r{}_s{}", self.r, self.s)
     }
 }
 
-/*
-    returns signature using 
-        sigma = ( H(m) + n * rx ) / k
-    note that d is the private key here and k is a nonce
-*/
+/// returns signature using "sigma = ( H(m) + n * rx ) / k"
+/// 
+/// # Arguments
+/// * `message` - A string slice that holds the message to be signed
+/// * `d` - A BigInt that is the private key
+/// * `k` - An optional BigInt that is the nonce
+/// 
+/// # Returns
+/// A Signature struct that holds the r and sigma values of the signature
+/// 
 pub fn sign(message: &str, d: BigInt, k: Option<BigInt>) -> Signature {
-    let secp256k1: Curve = super::Curve::new(); // gets parameters for secp256k1 curve
+    let secp256k1: Secp256k1 = Secp256k1::new(); // gets parameters for secp256k1 curve
 
     let k: BigInt = k.unwrap_or(modulo(&entropy(), &secp256k1.p));
 
@@ -109,12 +118,18 @@ pub fn sign(message: &str, d: BigInt, k: Option<BigInt>) -> Signature {
 }
 
 
-/*
-    checks whether the signature is from the public key or not
-    the math is hard to grasp, but thankfully its not too many operations.
-*/
+/// verifies a signature using "r = (u1 * G + u2 * Q).x"
+/// 
+/// # Arguments
+/// * `signature` - A reference to a Signature struct that holds the r and sigma values of the signature
+/// * `message` - A string slice that holds the message to be signed
+/// * `public_key` - A Point struct that is the public key
+/// 
+/// # Returns
+/// A boolean that is true if the signature is valid and false otherwise
+/// 
 pub fn verify_signature(signature: &Signature, message: &str, public_key: Point) -> bool {
-    let secp256k1: Curve = super::Curve::new(); // gets parameters for secp256k1 curve
+    let secp256k1: Secp256k1 = Secp256k1::new(); // gets parameters for secp256k1 curve
 
     let z: BigInt = bigint(&hash(message.to_owned() + &secp256k1.p.to_string()));
 
