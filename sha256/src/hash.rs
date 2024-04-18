@@ -1,10 +1,14 @@
 use bitvec::prelude::*;
 use crate::{HX, ROUND_CONSTANTS};
 
-/*
-    pretty self explanatory from the wikipedia article
-    https://en.wikipedia.org/wiki/SHA-2
-*/
+/// Function to hash a string using the SHA-256 algorithm
+/// 
+/// # Arguments
+/// * `data` - A string slice that holds the data to be hashed
+/// 
+/// # Returns
+/// * A string that holds the hashed data as a hexadecimal string
+/// 
 pub fn hash(data: String) -> String {
     let bit_vec = get_processed_data(data);
     let closest_512_multiple: usize = ((bit_vec.len() + 512 - 1) / 512) * 512;
@@ -71,9 +75,16 @@ pub fn hash(data: String) -> String {
 }
 
 
-/*
-    method used to generate the hash constants in lib.rs
-*/ 
+// ------------------- Helper functions ------------------- //
+
+
+
+/// Function to get the initial hash values for the SHA-256 algorithm.
+/// Values are hardcoded now, but they come from this function.
+/// 
+/// # Returns
+/// * An array of 8 u32 values that represent the initial hash values
+/// 
 pub fn get_initial_hash_values() -> [u32; 8] {
     let mut h: [u32; 8] = [0; 8];
 
@@ -85,9 +96,13 @@ pub fn get_initial_hash_values() -> [u32; 8] {
     h
 }
 
-/* 
-    method used to generate the round constants in lib.rs
-*/ 
+
+/// Function to get the round constants for the SHA-256 algorithm.
+/// Values are hardcoded now, but they come from this function.
+/// 
+/// # Returns
+/// * An array of 64 u32 values that represent the round constants
+/// 
 pub fn get_round_constants() -> [u32; 64] {
     let mut k: [u32; 64] = [0; 64];
     
@@ -99,21 +114,32 @@ pub fn get_round_constants() -> [u32; 64] {
     k
 }
 
-/*
-    checks whether a number is prime or not
-*/
+/// Function that checks if a number is prime
+/// 
+/// # Arguments
+/// * `x` - A u32 number to check if it is prime
+/// 
+/// # Returns
+/// * A boolean that is true if the number is prime, false otherwise
+/// 
 fn is_prime(x: u32) -> bool {
     if x <= 1 {
         return false;
     }
 
+    // check if x is divisible by any number from 2 to sqrt(x)
     let sqrt_x: u32 = (x as f64).sqrt() as u32;
     (2..=sqrt_x).all(|i: u32| x % i != 0)
 }
 
-/*
-    gets all primes up to lim
-*/
+/// Function to get the first prime numbers up to a limit
+/// 
+/// # Arguments
+/// * `lim` - A usize number that represents the limit of prime numbers to get
+/// 
+/// # Returns
+/// * A vector of u32 values that represent the first prime numbers up to the limit
+/// 
 fn get_first_primes(lim: usize) -> Vec<u32> {
     let mut primes: Vec<u32> = Vec::new();
     let mut n: u32 = 2;
@@ -127,33 +153,57 @@ fn get_first_primes(lim: usize) -> Vec<u32> {
     return primes;
 } 
 
-/*
-    gets bytes in big-endian format from the 512 bits passed
-*/
+/// Function to get the 512 bits chunk as an array of 64 32-bit words.
+/// Most words are 0s only 16 first are filled with the 32 bits of the slice.
+/// 
+/// # Arguments
+/// * `slice` - A BitSlice that holds the 512 bits chunk
+/// 
+/// # Returns
+/// * An array of 64 u32 values that represent the 512 bits chunk
+/// 
 fn get_big_endian_words_from_512bits(slice: &BitSlice) -> [u32; 64] {
+
+    // init schedule array with 0s
     let mut w: [u32; 64] = [0; 64];
     let mut j = 0;
+
+    // iterate over every 32 bits of the slice and add it to the w array (big-endian)
     for i in (32..=slice.len()).step_by(32) {
+
         // load_le and load_be methods not working here, had to do it by hand
         for (k, bit) in slice[(i-32)..i].iter().enumerate() {
             w[j] |= if *bit { 1 << 31 - k } else { 0 };
         }
+
         j += 1;
     }
 
     w
 }
 
-/*
-    returns a x right shifted and rotated n times
-*/
+/// Function to right rotate a 32-bit number by n bits
+/// 
+/// # Arguments
+/// * `x` - A u32 number to rotate
+/// * `n` - A u32 number that represents the number of bits to rotate
+/// 
 fn right_rotate(x: u32, n: u32) -> u32 {
     (x >> n) | (x << (32 - n))
 }
  
-/*
-    gets the initial string as a bitvec with all the bit padding needed
-*/
+/// Function to get the processed data for the SHA-256 algorithm.
+/// The data is processed as follows:
+/// 1. Add 1 to the end of the data
+/// 2. Add 0s until the length of the data is a multiple of 512
+/// 3. Add the number of bits from the original data in big-endian
+/// 
+/// # Arguments
+/// * `data` - A string that holds the data to be processed
+/// 
+/// # Returns
+/// * A BitVec that holds the processed data
+///
 fn get_processed_data(data: String) -> BitVec {
     let mut bit_vec: BitVec = bitvec![];
 
