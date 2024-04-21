@@ -1,9 +1,14 @@
+use serde::Serialize;
+
 mod db_api;
 mod network;
 
+#[derive(Serialize)]
+struct Port(u16);
+
 #[tokio::main]
 async fn main() {
-    let _ = network::api::start_node(8000).await;
+    let _ = network::api::start_node(8334).await;
 }
 
 
