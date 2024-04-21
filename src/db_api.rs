@@ -90,31 +90,36 @@ impl BlocksDB {
             let sender: Point = transaction.get_sender();
             let recipient: Point = transaction.get_recipient();
 
-            // get original balances
-            let sender_balance: Option<f32> = self.get_balance(&sender);
-            
-            // If no sender cannot send money. If sender doesn't have all money, then there is a problem and cannot send money
-            if sender_balance.is_none() || (sender_balance.is_some() && sender_balance.unwrap() < transaction.get_amount()) {
+            // only do sender related operations if transaction isn't miner reward
+            if sender != Point::identity() {
 
-                self.reverse_chainstate(recorded_transactions).unwrap(); // panic if cannot reverse transactions
+                // get original balances
+                let sender_balance: Option<f32> = self.get_balance(&sender);
+                
+                // If no sender cannot send money. If sender doesn't have all money, then there is a problem and cannot send money
+                if sender_balance.is_none() || (sender_balance.is_some() && sender_balance.unwrap() < transaction.get_amount()) {
 
-                // status code invalid data as data is most likely invalid
-                return Err(Status::new(rusty_leveldb::StatusCode::InvalidData, "Chainstate information could not be updated."));
+                    self.reverse_chainstate(recorded_transactions).unwrap(); // panic if cannot reverse transactions
+
+                    // status code invalid data as data is most likely invalid
+                    return Err(Status::new(rusty_leveldb::StatusCode::InvalidData, "Chainstate information could not be updated."));
+                }
+                
+                let mod_sender_balance: f32 = sender_balance.unwrap() - transaction.get_amount();
+
+                // update both modified balances, reverse changes if error in update
+                match self.db.put(&bincode::serialize(&sender).unwrap(), &mod_sender_balance.to_le_bytes()) {
+                    Ok(_) => {},
+                    Err(e) => {
+                        self.reverse_chainstate(recorded_transactions).unwrap(); // panic if cannot reverse transactions
+                        return Err(e);
+                    }
+                }
+
             }
-            
-            let mod_sender_balance: f32 = sender_balance.unwrap() - transaction.get_amount();
 
             let mod_recipient_balance: f32 = self.get_balance(&recipient).unwrap_or(0.0) + transaction.get_amount();
-
-            // update both modified balances, reverse changes if error in update
-            match self.db.put(&bincode::serialize(&sender).unwrap(), &mod_sender_balance.to_le_bytes()) {
-                Ok(_) => {},
-                Err(e) => {
-                    self.reverse_chainstate(recorded_transactions).unwrap(); // panic if cannot reverse transactions
-                    return Err(e);
-                }
-            }
-
+            
             match self.db.put(&bincode::serialize(&recipient).unwrap(), &mod_recipient_balance.to_le_bytes()) {
                 Ok(_) => {},
                 Err(e) => {
