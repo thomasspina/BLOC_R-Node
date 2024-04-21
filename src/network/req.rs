@@ -1,25 +1,29 @@
 use std::{error::Error, io::{Read, Write}, net::TcpStream};
-
 use serde::{Serialize, Deserialize};
 use std::time::Duration;
 
+
+/// Enum to represent the type of request/response
 #[derive(PartialEq, Serialize, Deserialize)]
 pub enum RType {
     ConnectTest
 }
 
+/// Struct to represent the request
 #[derive(Serialize, Deserialize)]
 pub struct Request {
     pub req_type: RType
 }
 
+/// Struct to represent the response
 #[derive(Serialize, Deserialize)]
 pub struct Response {
     pub res_type: RType,
     pub status: u8
 }
 
-/// Handles each tcp node connection
+/// Handles each tcp node connection. Each stream is handled as a seperate request.
+/// A single response is sent for every request
 /// 
 /// # Arguments
 /// * `stream` - The tcp stream on which the node is connected
@@ -43,18 +47,18 @@ pub fn handle_client_request(mut stream: TcpStream) -> Result<(), Box<dyn Error>
 
     stream.read(&mut buffer)?;
 
-        
     let req: Request = bincode::deserialize(&buffer)?;
 
     // handle request in accordance with its type
     if req.req_type == RType::ConnectTest {
-        handle_connecttest(stream)?;
+        handle_connect_test(stream)?;
     }
 
     Ok(())
 }
 
-/// handle the response from the request
+/// handle the response from the request. each request is handled as a seperate response
+/// the responses are unique to the request type
 /// 
 /// # Arguments
 /// * `stream` - The tcp stream on which the response is expected
@@ -92,7 +96,7 @@ pub fn handle_response(mut stream: TcpStream) -> Result<(), Box<dyn Error>> {
     Ok(())
 }   
 
-/// Handles the connect test request
+/// Handles the connect test request type
 /// This request is used to verify that the node is up and running
 /// 
 /// # Arguments
@@ -101,7 +105,7 @@ pub fn handle_response(mut stream: TcpStream) -> Result<(), Box<dyn Error>> {
 /// # Returns
 /// * `Result<(), Box<dyn Error>>` - The result of handling the client
 /// 
-fn handle_connecttest(mut stream: TcpStream) -> Result<(), Box<dyn Error>> {
+fn handle_connect_test(mut stream: TcpStream) -> Result<(), Box<dyn Error>> {
     // make response object
     let response: Response = Response {
         res_type: RType::ConnectTest,

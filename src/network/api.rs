@@ -8,7 +8,10 @@ use crate::network::req::handle_client_request;
 struct Port(u16);
 
 
-/// Start the node
+/// Start the node. 
+/// This function will start the node on the given port and send a POST request to the seed server to notify it of the new node.
+/// If the POST request fails, the function will return an error but won't stop the tcp server from running.
+/// The node won't be recognized or visible to other nodes if the POST request fails.
 /// 
 /// # Returns
 /// * `Result<(), Box<dyn Error>>` - The result of starting the node
@@ -28,6 +31,7 @@ pub async fn start_node(port: u16) -> Result<(), Box<dyn Error>> {
             match stream {
                 Ok(stream) => {
                     println!("New connection: {}", stream.peer_addr().unwrap());
+
                     // Spawn a new thread for each connection.
                     thread::spawn(move || {
                         match handle_client_request(stream) {
@@ -51,7 +55,10 @@ pub async fn start_node(port: u16) -> Result<(), Box<dyn Error>> {
         .send()
         .await?;
 
-    println!("POST request sent. Status: {}", res.status());
+    // status check, will be 500 if server is failing to handle requests
+    if res.status() != 200 {
+        return Err(format!("POST request FAILED on Seed Server. Status: {}\nCheck Firewall to allow traffic on port: {}", res.status(), port.0).into());
+    }
 
     Ok(())
 }

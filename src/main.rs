@@ -8,7 +8,7 @@ struct Port(u16);
 
 #[tokio::main]
 async fn main() {
-    let _ = network::api::start_node(8334).await;
+    network::api::start_node(8334).await.unwrap();
 }
 
 
