@@ -916,6 +916,7 @@ dependencies = [
  "byteorder",
  "dirs",
  "ecdsa",
+ "lazy_static",
  "num-bigint",
  "rblock",
  "reqwest",

@@ -3,10 +3,10 @@ use reqwest::Client;
 use serde::Serialize;
 use crate::network::req::handle_client_request;
 
-
 #[derive(Serialize)]
 struct Port(u16);
 
+// TODO: function to synchronize the network
 
 /// Start the node. 
 /// This function will start the node on the given port and send a POST request to the seed server to notify it of the new node.
@@ -60,6 +60,13 @@ pub async fn start_node(port: u16) -> Result<(), Box<dyn Error>> {
         return Err(format!("POST request FAILED on Seed Server. Status: {}\nCheck Firewall to allow traffic on port: {}", res.status(), port.0).into());
     }
 
+    // TODO: get list of other verified nodes from seed server
+
+
+    // TODO: add a put to the server when you stop running your node
+
     Ok(())
 }
+
+
 

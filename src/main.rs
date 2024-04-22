@@ -1,10 +1,32 @@
 use serde::Serialize;
 
-mod db_api;
+mod db;
 mod network;
+
+#[macro_use]
+extern crate lazy_static;
+use std::sync::Mutex;
+
+use crate::db::BlocksDB;
 
 #[derive(Serialize)]
 struct Port(u16);
+
+
+lazy_static! {
+    // declare global rust db with mutex for thread safe mutation
+    pub static ref GLOBAL_DB: Mutex<BlocksDB>= {
+        match BlocksDB::start_db() {
+            Ok(db) => {
+                Mutex::new(db)
+            },
+            Err(e) => {
+                // if db cannot be started, panic
+                panic!("{e}")
+            }
+        }
+    };
+}
 
 #[tokio::main]
 async fn main() {

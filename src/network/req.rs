@@ -1,26 +1,64 @@
-use std::{error::Error, io::{Read, Write}, net::TcpStream};
+use core::fmt;
+use std::{error::Error, io::{Read, Write}, net::{SocketAddr, TcpStream}};
+use rblock::Block;
 use serde::{Serialize, Deserialize};
 use std::time::Duration;
+use crate::GLOBAL_DB;
 
+/// Enum to represent the status of responses
+#[derive(PartialEq, Serialize, Deserialize)]
+pub enum Status {
+    /// everything is as expected
+    OK,
+
+    /// request did not meet expected format
+    BadReq,
+
+    /// received data was not valid
+    BadData,
+
+    /// There was an error internaly
+    IntErr
+}
+
+// implement the display trait for status to print it more easily
+impl fmt::Display for Status {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Status::OK => write!(f, "ok"),
+            Status::BadReq => write!(f, "bad request"), 
+            Status::BadData => write!(f, "bad data"),
+            Status::IntErr => write!(f, "internal error")
+        }
+    }
+}
 
 /// Enum to represent the type of request/response
 #[derive(PartialEq, Serialize, Deserialize)]
 pub enum RType {
-    ConnectTest
+    /// Connect Test is used to verify a connection to a node
+    ConnectTest,
+
+    /// PushBlock is to push a newfound block to other nodes
+    PushBlock,
 }
 
 /// Struct to represent the request
 #[derive(Serialize, Deserialize)]
 pub struct Request {
-    pub req_type: RType
+    pub req_type: RType,
+    pub block: Option<Block>
 }
 
 /// Struct to represent the response
 #[derive(Serialize, Deserialize)]
 pub struct Response {
     pub res_type: RType,
-    pub status: u8
+    pub status: Status
 }
+
+// TODO: add a function to request new blocks
+// TODO: add function to request whole blockchain
 
 /// Handles each tcp node connection. Each stream is handled as a seperate request.
 /// A single response is sent for every request
@@ -52,6 +90,8 @@ pub fn handle_client_request(mut stream: TcpStream) -> Result<(), Box<dyn Error>
     // handle request in accordance with its type
     if req.req_type == RType::ConnectTest {
         handle_connect_test(stream)?;
+    } else if req.req_type == RType::PushBlock {
+        handle_push_block(stream, req)?;
     }
 
     Ok(())
@@ -86,7 +126,7 @@ pub fn handle_response(mut stream: TcpStream) -> Result<(), Box<dyn Error>> {
     let res: Response = bincode::deserialize(&buffer)?;
 
     if res.res_type == RType::ConnectTest {
-        if res.status == 200 {
+        if res.status == Status::OK {
             return Ok(());
         } else {
             return Err(format!("ConnectTest failed. Status: {}", res.status).into());
@@ -105,13 +145,99 @@ pub fn handle_response(mut stream: TcpStream) -> Result<(), Box<dyn Error>> {
 /// # Returns
 /// * `Result<(), Box<dyn Error>>` - The result of handling the client
 /// 
-fn handle_connect_test(mut stream: TcpStream) -> Result<(), Box<dyn Error>> {
+fn handle_connect_test(stream: TcpStream) -> Result<(), Box<dyn Error>> {
     // make response object
     let response: Response = Response {
         res_type: RType::ConnectTest,
-        status: 200
+        status: Status::OK
     };
 
+    send_response(response, stream)?;
+
+    Ok(())
+}
+
+fn handle_push_block(stream: TcpStream, req: Request) -> Result<(), Box<dyn Error>> {
+    let addr: SocketAddr = stream.peer_addr()?;
+    let mut response: Response = Response {
+        res_type: RType::PushBlock,
+        status: Status::OK
+    };
+
+    // check for bad request
+    if req.block.is_none() {
+        response.status = Status::BadReq;
+        send_response(response, stream)?;
+        return Err(format!("No block in push request from {}", addr).into());
+    }
+
+    let block: Block = req.block.unwrap();
+
+    // preliminary block checks
+    if block.verify_hash() || block.verify_transactions() || block.confirm_difficulty() {
+        response.status = Status::BadData;
+        send_response(response, stream)?;
+        return Err(format!("Bad block data in push request from {}", addr).into());
+    }
+
+    // get global db for verifications
+    match GLOBAL_DB.lock() {
+        Ok(mut db) => {
+            let latest_block = db.get_latest_block();
+
+            // check if latest block exists in db
+            if latest_block.is_err() {
+                response.status = Status::IntErr;
+                send_response(response, stream)?;
+                return Err("Latest block doesn't exist in db".into());
+            }
+
+            let latest_block: Block = latest_block.unwrap();
+
+            // check if block is latest
+            if latest_block.get_height() > block.get_height() {
+                response.status = Status::BadData;
+                send_response(response, stream)?;
+                return Err(format!("Latest block in req from {} is later than block from in db", addr).into());
+            }
+
+            if latest_block.get_height() + 1 < block.get_height() {
+                // TODO: request other blocks coming up to it first
+            }
+
+            // TODO: verify difficulty
+            // TODO: verify old block hash fits
+            // TODO: verify transacations in db (with chainstate)
+            // TODO: put block in db
+        },
+        
+        // db is inaccessible
+        Err(e) => {
+            response.status = Status::IntErr;
+            send_response(response, stream)?;
+            return Err(e.into());
+        }
+    }
+
+    // TODO: propagate block
+    send_response(response, stream)?;
+    Ok(())
+}
+
+
+/// Helper function to send a response to a client
+/// 
+/// # Arguments
+/// * `response` - The response to send
+/// * `stream` - The tcp stream on which to send the response
+/// 
+/// # Modifications
+/// * Closes the stream after sending the response
+/// 
+/// # Returns
+/// * `Result<(), Box<dyn Error>>` - The result of sending the response
+/// 
+fn send_response(response: Response, mut stream: TcpStream) -> Result<(), Box<dyn Error>> {
     // serialize responses
     let bytes: Vec<u8> = bincode::serialize(&response)?;
     let buffer_size: [u8; 4] = (bytes.len() as u32).to_le_bytes();

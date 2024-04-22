@@ -261,4 +261,9 @@ impl Block {
     pub fn verify_hash(&self) -> bool {
         self.get_hash() == hash(self.get_message())
     }
+
+    /// verifies on the block if the difficulty and hash match
+    pub fn confirm_difficulty(&self) -> bool {
+        Block::verify_difficulty(self.get_hash(), self.get_difficulty())
+    }
 }
