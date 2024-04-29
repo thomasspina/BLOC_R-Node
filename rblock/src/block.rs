@@ -235,7 +235,7 @@ impl Block {
     /// # Returns
     /// * True if all transactions are valid, false otherwise
     /// 
-    pub fn verify_transactions(&self) -> bool {
+    pub fn confirm_transactions(&self) -> bool {
         // too many transactions
         if self.transactions.len() > TRANSACTION_LIMIT_PER_BLOCK {
             eprintln!("{} is too many transactions", self.transactions.len());
@@ -258,12 +258,75 @@ impl Block {
     /// 
     /// # Returns
     /// * True if the hash is correct, false otherwise
-    pub fn verify_hash(&self) -> bool {
+    pub fn confirm_hash(&self) -> bool {
         self.get_hash() == hash(self.get_message())
     }
 
     /// verifies on the block if the difficulty and hash match
     pub fn confirm_difficulty(&self) -> bool {
         Block::verify_difficulty(self.get_hash(), self.get_difficulty())
+    }
+
+    /// returns the difficulty that a provided block should have.
+    /// 
+    /// difficulty works like this: a u32 is set as FFFFFFFF
+    /// -> each 4 bit chunk of that u32 is compared each of the last 8 4-bit chunks
+    ///     of the hash, an F in the difficulty means that the value of the respective 
+    ///     4-bit chuck in the hash needs to take a value between 0 and F, an E between 0 and E,
+    ///     a D between 0 and D, and so forth until its down to just zero.
+
+    ///     the difficulty is adjusted by slowly subtracting one the each 4-bit chunk of the difficulty u32
+    ///     until they are all 0
+    /// 
+    /// # Arguments
+    /// * `base_block` - A &Block which specifies a reference to the block from which you want to know the difficulty
+    /// * `comp_block` - A &Block which specifies a reference to the block for which you want to know the correct difficulty
+    /// 
+    /// # Returns
+    /// A u32 which is the supposed difficulty of comp_block as a u32.
+    /// 
+    pub fn get_supposed_difficulty(base_block: &Block, comp_block: &Block) -> u32 {
+        let latest_difficulty: u32 = base_block.get_difficulty();
+        // get time difference between blocks
+        let time_diff: u64 = comp_block.get_timestamp() - base_block.get_timestamp();
+
+        let mut difficulty: u32 = latest_difficulty;
+
+        if time_diff > super::BLOCK_SPEED {
+            // reduce difficulty by increasing range of values per 4bit chuck
+            for i in (0..=28).rev().step_by(4) {
+                let mut bits: u32 = (latest_difficulty >> i) & 0xf;
+
+                // if current 4 bits and next 4 bits are 1111
+                if bits == 0xf { 
+                    continue;
+                }
+
+                // add one to the 4 bit block
+                bits += 1;
+
+                let mask: u32 = 0xffffffff & !(0xf << i); // use a mask to eliminate 4 bits that are changed
+                difficulty = (difficulty & mask) | (bits << i);
+                break;
+            }
+        } else {
+            // increase difficulty by reducing range of values per 4 bit chunk
+            for i in (0..=28).step_by(4) {
+                let mut bits: u32 = (latest_difficulty >> i) & 0xf;
+
+                if bits == 0 { 
+                    continue;
+                }
+                // sub one to the 4 bit block
+                bits -= 1;
+                
+                let mask: u32 = 0xffffffff & !(0xf << i); // use a mask to eliminate 4 bits that are changed
+                difficulty = (difficulty & mask) | (bits << i);
+                break;
+            }
+        }
+
+
+        difficulty
     }
 }

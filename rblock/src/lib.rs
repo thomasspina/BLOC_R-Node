@@ -5,10 +5,8 @@ const REWARD: f32 = 1.5;
 mod block;
 pub use block::Block;
 
-mod blockchain;
-pub use blockchain::Blockchain;
-
 mod functions;
 
 mod transaction;
 pub use transaction::Transaction;
+pub use functions::get_merkel_root;
