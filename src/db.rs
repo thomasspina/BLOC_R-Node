@@ -1,4 +1,4 @@
-use std::{io::{self, ErrorKind}, path::PathBuf};
+use std::{collections::HashMap, io::{self, ErrorKind}, path::PathBuf};
 use dirs::home_dir;
 use ecdsa::secp256k1::Point;
 use rblock::{Block, Transaction};
@@ -6,8 +6,8 @@ use rusty_leveldb::{DBIterator, LdbIterator, Options, Status, DB};
 use byteorder::{LittleEndian, ReadBytesExt};
 use std::io::Cursor;
 
+pub const DB_FILENAME: &'static str = ".r_blocks";
 const LATEST_BLOCK_KEY: &'static [u8; 6] = b"latest";
-const DB_FILENAME: &'static str = ".r_blocks";
 const PUBLIC_KEY_PREFIX: &'static [u8; 7] = b"userPK_";
 
 
@@ -20,11 +20,6 @@ pub struct BlocksDB {
     db: DB
 }
 
-// TODO: function to wipe db to restart from 0 if db was corrutped
-
-// TODO: add function to rebuild chainstate from blocks.
-// Perhaps rebuild chainstate should be called at every restart of db
-
 impl BlocksDB {
     /// Starts the database and returns a BlocksDB object with the database
     /// 
@@ -33,7 +28,7 @@ impl BlocksDB {
     /// 
     pub fn start_db() -> Result<Self, Status> {
         let mut options: Options = Options::default();
-        options.create_if_missing = true; // create DB if missing
+        options.create_if_missing = false; // create DB if missing
         
         // get home directory
         let path: PathBuf = home_dir().ok_or_else(|| {
@@ -44,16 +39,17 @@ impl BlocksDB {
         Ok(BlocksDB { db })
     }
 
+
+    // TODO: don't forget to remove this function
     pub fn init_db(&mut self, point1: &Point, point2: &Point) {
         let genesis: Block = Block::new_genesis();
 
         self.put_block(&genesis).unwrap();
         self.update_latest_block(&genesis).unwrap();
 
-        self.update_balance(point1, 100.).unwrap();
-        self.update_balance(point2, 100.).unwrap();
+        self.update_balance(point1, 10.).unwrap();
+        self.update_balance(point2, 10.).unwrap();
     }
-
 
     /// Reads and returns the block with a specific height if it exists
     /// 
@@ -238,7 +234,7 @@ impl BlocksDB {
     /// # Returns
     /// An Result<(), Status> which is Ok(()) if the balance was successfully updated, or an error if it was not.
     /// 
-    pub fn update_balance(&mut self, public_key: &Point, value: f32) -> Result<(), Status> {
+    fn update_balance(&mut self, public_key: &Point, value: f32) -> Result<(), Status> {
         // account balances are stored in little-endian
         self.db.put(&BlocksDB::get_db_user_key(public_key), &value.to_le_bytes())?;
         self.db.flush()?;
@@ -265,7 +261,7 @@ impl BlocksDB {
 
     
     /// verifies that the transactions are valid and can be added to the chainstate.
-    /// only verifies that the sender exists and has enough money to send the money in the transaction.
+    /// makes a hashmap of all the new balances so that the new balances can be updated easily
     /// 
     /// # Arguments
     /// * `transactions` - A Vec<Transaction> which specifies the transactions to verify
@@ -274,26 +270,48 @@ impl BlocksDB {
     /// This method changes the internal state of the DB object by calling get on it.
     /// 
     /// # Returns
-    /// An Result<(), Status> which is Ok() if the transactions are valid, or an error if they are not.
+    /// An Result<HashMap<&Point, f32>, Status> which is returns a map of the new balances of the verified transactions
     /// 
-    pub fn verify_transactions(&mut self, transactions: &Vec<Transaction>) -> Result<(), Status> {
+    fn verify_transactions(&mut self, transactions: &Vec<Transaction>) -> Result<HashMap<Point, f32>, Status> {
+        // hashmap to remember good balances
+        let mut balances: HashMap<Point, f32> = HashMap::new();
+
         for transaction in transactions {
             let sender: Point = transaction.get_sender();
+            let recipient: Point = transaction.get_recipient();
 
             // Point::identity is miner reward
             if sender != Point::identity() {
-                // get original balances
-                let sender_balance: f32 = self.get_balance(&sender)?;
 
-                // check if sender exists and has enough money to send
-                if sender_balance < transaction.get_amount() {
-                    // status code invalid data as data is most likely invalid
-                    return Err(Status::new(rusty_leveldb::StatusCode::InvalidData, &format!("{} has insufficient funds", sender)));
-                }
+                // get original balances
+                // check hashmap first for balances
+                let sender_balance: f32 = *balances.get(&sender).unwrap_or(
+                    &self.get_balance(&sender).unwrap_or(0.0)
+                );
+
+                // calculate new balances
+                let new_sender_balance: f32 = sender_balance - transaction.get_amount();
+
+                balances.insert(sender, new_sender_balance);
+            }
+
+            // do same for recipient
+            let recipient_balance: f32 = *balances.get(&recipient).unwrap_or(
+                &self.get_balance(&recipient).unwrap_or(0.0)
+            );
+            
+            let new_recipient_balance: f32 = recipient_balance + transaction.get_amount();
+            
+            balances.insert(recipient, new_recipient_balance);
+        }
+
+        for (addr, balance) in balances.iter() {
+            if *balance < 0.0 {
+                return Err(Status::new(rusty_leveldb::StatusCode::InvalidData, &format!("public key: {} has negative balance after all transactions.", addr)));
             }
         }
 
-        Ok(())
+        Ok(balances)
     }
 
     
@@ -310,30 +328,13 @@ impl BlocksDB {
     /// # Returns
     /// An Result<(), Status> which is Ok(()) if the chainstate was successfully updated, or an error if it was not.
     ///
-    pub fn update_chainstate(&mut self, transactions: Vec<Transaction>) -> Result<(), Status> {
+    fn update_chainstate(&mut self, transactions: Vec<Transaction>) -> Result<(), Status> {
         // verify that the transactions are valid according to the chainstate
-        self.verify_transactions(&transactions)?; 
+        let verified_balances: HashMap<Point, f32> = self.verify_transactions(&transactions)?; 
 
-        for transaction in transactions {
-            let sender: Point = transaction.get_sender();
-            let recipient: Point = transaction.get_recipient();
-
-            // only do sender related operations if transaction isn't miner reward
-            if sender != Point::identity() {
-
-                // modified sender balance
-                let modified_sender_balance: f32 = self.get_balance(&sender)? - transaction.get_amount();
-
-                // update modified sender balance
-                self.update_balance(&sender, modified_sender_balance)?;
-            }
-
-            // if user doesn't exist yet, simply give the user a balance of 0 + transaction amount
-            let modified_recipient_balance: f32 = self.get_balance(&recipient).unwrap_or(0.0) + transaction.get_amount();
-            
-            // update modified recipient balance
-            self.update_balance(&recipient, modified_recipient_balance)?;
-            
+        // update all balances
+        for (addr, balance) in verified_balances.iter() {
+            self.update_balance(addr, *balance)?;
         }
 
         Ok(())
@@ -383,20 +384,23 @@ impl BlocksDB {
         // clear chainstate
         self.clear_chainstate()?;
 
-        // get genesis block
-        let curr_block: Block = self.get_block(0)?;
+        let mut curr_block: Block; 
+        let mut curr_height: u64 = 0; // start at genesis block
+
         let latest_block: Block = self.get_latest_block()?;
         let latest_block_height: u64 = latest_block.get_height();
-        let curr_height: u64 = curr_block.get_height();
+    
 
         while curr_height <= latest_block_height {
+            // get block
+            curr_block = self.get_block(curr_height)?;
+
+            // update chainstate
             let transactions: Vec<Transaction> = curr_block.get_transactions();
-
-
-            // TODO: what about the order of the transactions?
-                // like a user has the funds but he is created in the same transaction block 
-                // and the transaction comes after? then update chainstate simple blocks
             self.update_chainstate(transactions)?;
+
+        
+            curr_height += 1;
         }
 
         Ok(())

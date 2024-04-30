@@ -1,11 +1,12 @@
 use core::fmt;
+use std::hash::Hash;
 use num_bigint::BigInt;
 use num_traits::zero;
 use serde::ser::{Serialize, Serializer, SerializeStruct};
 use crate::{math::{modular_multiplicative_inverse, modulo, bigint, calculate_wnaf}, secp256k1::FP};
 use serde::de::{Deserialize, Deserializer};
 
-#[derive(Debug, Clone)]
+#[derive(Eq, PartialEq, Hash, Clone)]
 pub struct Point {
     pub x: BigInt,
     pub y: BigInt
@@ -60,14 +61,6 @@ impl<'de> Deserialize<'de> for Point {
             x: bigint(&fields.x),
             y: bigint(&fields.y)
         })
-    }
-}
-
-/// implement for PartialEq for Point
-/// enables == and != for Point
-impl PartialEq for Point {
-    fn eq(&self, other: &Self) -> bool {
-        self.x == other.x && self.y == other.y
     }
 }
 
